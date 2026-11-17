@@ -11,7 +11,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 (sur son PC ou son Steam Deck), pour comparer vos temps ou vos stratégies.
 
 > Projet de fan, **non officiel**, sans lien avec Capcom. Aucun fichier du jeu n'est inclus : il faut
-> posséder Resident Evil HD Remaster sur Steam.
+> posséder [Resident Evil HD Remaster sur Steam](https://store.steampowered.com/app/304240/).
 
 ## En bref
 
@@ -146,6 +146,15 @@ Le randomizer ne mélange que les objets déjà **relevés**. Tout le monde peut
 4. Ouvre le journal (bouton **Journal du jeu**) et joins-le à une
    [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues), en précisant le personnage et la difficulté.
 
+**Astuce : [BhdTool](https://github.com/eleval/BhdTool) fait gagner beaucoup de temps.** Cet outil d'eleval, fait pour l'entraînement
+au speedrun, s'installe en copiant son `dinput8.dll` (et `rooms.json`) dans le dossier du jeu ; il est
+compatible avec le randomizer. En jeu, **F5** ouvre son menu :
+- son outil pour **aller directement dans n'importe quelle pièce** permet de faire le tour du manoir en
+  quelques minutes, en mode relevé (reste toujours environ 2 secondes dans chaque pièce) ;
+- le **saut des portes** (*Door Skip*) supprime les animations d'ouverture de porte.
+
+Sur Steam Deck, coche aussi *Ajouter dinput8.dll* sous l'option de lancement de l'application.
+
 Les traductions ont été faites pour le projet : si tu parles une des 7 langues et vois une erreur,
 signale-la aussi (les textes sont dans `Randomizer/textes.py`).
 
@@ -213,8 +222,8 @@ preparer_publication.py       prépare le dépôt, le zip Windows et l'archive L
 
 ## Crédits
 
-- Noms et liaisons des pièces : `rooms.json` de **BhdTool** (eleval, GPLv3).
-- Informations sur les verrous : **Evil Resource**.
+- **[BhdTool](https://github.com/eleval/BhdTool)** (eleval, GPLv3) : son `rooms.json` fournit les noms et liaisons des pièces, et
+  l'outil aide beaucoup pour les relevés (voir [Aider le projet](#aider-le-projet)).
 - Inspiré des randomizers de la communauté (BioRand, ancien randomizer de Benn Powell).
 
 ## Licence
@@ -236,7 +245,7 @@ number and a friend can play the same game as you, each on their own PC or Steam
 or strategies.
 
 > Unofficial **fan project**, not affiliated with Capcom. No game files are included: you need to own
-> Resident Evil HD Remaster on Steam.
+> [Resident Evil HD Remaster on Steam](https://store.steampowered.com/app/304240/).
 
 ### In short
 
@@ -338,6 +347,15 @@ The randomizer only shuffles items that have already been **surveyed**. Anyone c
 4. Open the log (**Game log** button) and attach it to an
    [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues), stating your character and difficulty.
 
+**Tip: [BhdTool](https://github.com/eleval/BhdTool) saves a lot of time.** This tool by eleval, made for speedrun practice, is
+installed by copying its `dinput8.dll` (and `rooms.json`) into the game folder; it works alongside the
+randomizer. In game, **F5** opens its menu:
+- its tool to **jump to any room** lets you go around the mansion in a few minutes in survey mode (still
+  stay about 2 seconds in each room);
+- **Door Skip** removes the door-opening animations.
+
+On Steam Deck, also tick *Also load dinput8.dll* under the app's launch option.
+
 Translations were made for the project: if you speak one of the 7 languages and spot a mistake, please
 report it too (texts are in `Randomizer/textes.py`).
 
@@ -402,8 +420,8 @@ The code, file names and command-line options are in French (the project's worki
 
 ### Credits
 
-- Room names and connections: `rooms.json` from **BhdTool** (eleval, GPLv3).
-- Lock information: **Evil Resource**.
+- **[BhdTool](https://github.com/eleval/BhdTool)** (eleval, GPLv3): its `rooms.json` provides the room names and connections, and
+  the tool is a great help for surveys (see [Help the project](#help-the-project)).
 - Inspired by community randomizers (BioRand, Benn Powell's former randomizer).
 
 ### License
