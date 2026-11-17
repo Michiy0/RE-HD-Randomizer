@@ -1,0 +1,24 @@
+# Fichiers produits par la compilation
+DLL/*.dll
+Randomizer/dist/
+Randomizer/build/
+*.spec
+__pycache__/
+
+# Seeds générées et journaux
+seeds/
+seed_*.json
+seed_*.lua
+seed_*_spoiler.txt
+randomizer_journal.txt
+journal_*.txt
+
+# Dossier de publication (zip pour les testeurs)
+publication/
+
+# Fichiers personnels ou de tiers à ne jamais publier
+Copie Save/
+ARCtool/
+*.arc
+*.CT
+~$*.xlsx
