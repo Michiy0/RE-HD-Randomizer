@@ -11,10 +11,13 @@ L'exe du zip est construit à partir de ces fichiers publiés (donc avec le tabl
 
     python preparer_publication.py
 """
+import io
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -32,11 +35,13 @@ FICHIERS = {
     "LICENSE": "LICENSE",
     ".gitignore": ".gitignore",
     "LISEZ-MOI_testeur.txt": "LISEZ-MOI_testeur.txt",
+    "LISEZ-MOI_linux.txt": "LISEZ-MOI_linux.txt",
     "preparer_publication.py": "preparer_publication.py",
     "donnees_randomizer_RE1.xlsx": "donnees_randomizer_RE1.xlsx",
     "DLL/randomizer.c": "DLL/randomizer.c",
     "DLL/xinput1_4.def": "DLL/xinput1_4.def",
     "DLL/compiler.bat": "DLL/compiler.bat",
+    "DLL/compiler.sh": "DLL/compiler.sh",
     "DLL/LISEZMOI.md": "DLL/LISEZMOI.md",
     "Randomizer/application.py": "Randomizer/application.py",
     "Randomizer/generateur_seed.py": "Randomizer/generateur_seed.py",
@@ -46,6 +51,7 @@ FICHIERS = {
     "images/progression.svg": "images/progression.svg",
     "Randomizer/creer_icone.py": "Randomizer/creer_icone.py",
     "Randomizer/construire_exe.bat": "Randomizer/construire_exe.bat",
+    "Randomizer/construire_linux.sh": "Randomizer/construire_linux.sh",
     "Randomizer/icone.ico": "Randomizer/icone.ico",
     "Randomizer/icone.png": "Randomizer/icone.png",
     "Randomizer/appliquer_seed.lua": "outils/cheat_engine/appliquer_seed.lua",
@@ -84,6 +90,57 @@ def construire_exe(depot):
         return exe
 
 
+DISTRIBUTION_LINUX = "Ubuntu-22.04"   # glibc 2.35 : le binaire démarre aussi sur Steam Deck (SteamOS 3.5+)
+
+
+def chemin_wsl(chemin):
+    """C:\\Users\\… -> /mnt/c/Users/…"""
+    chemin = str(Path(chemin).resolve())
+    return "/mnt/" + chemin[0].lower() + chemin[2:].replace("\\", "/")
+
+
+def wsl_disponible():
+    try:
+        r = subprocess.run(["wsl", "-l", "-q"], capture_output=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    noms = r.stdout.decode("utf-16-le", errors="ignore").replace("\0", "").split()
+    return DISTRIBUTION_LINUX in noms
+
+
+def construire_linux(depot):
+    """Construit RandomizerREHD-linux dans WSL (Ubuntu 22.04), à partir d'une copie du dépôt.
+    Renvoie le chemin du binaire, ou None si WSL n'est pas disponible."""
+    if not wsl_disponible():
+        print(f"WSL « {DISTRIBUTION_LINUX} » absent : pas de version Linux cette fois.")
+        return None
+    with tempfile.TemporaryDirectory(prefix="randomizer_linux_") as tmp:
+        shutil.copytree(depot, Path(tmp) / "depot", ignore=shutil.ignore_patterns(".git"))
+        script = Path(tmp) / "construire.sh"
+        script.write_bytes((
+            "set -e\n"
+            f"SRC='{chemin_wsl(Path(tmp) / 'depot')}'\n"
+            "rm -rf /root/build && cp -r \"$SRC\" /root/build\n"
+            "sh /root/build/DLL/compiler.sh\n"
+            "sh /root/build/Randomizer/construire_linux.sh\n"
+            "cp /root/build/Randomizer/dist/RandomizerREHD-linux \"$SRC/../RandomizerREHD-linux\"\n"
+        ).encode("utf-8"))
+        r = subprocess.run(["wsl", "-d", DISTRIBUTION_LINUX, "-u", "root", "--", "sh", chemin_wsl(script)],
+                           capture_output=True)
+        if r.returncode != 0:
+            sortie = (r.stdout + r.stderr).decode("utf-8", errors="replace")
+            sys.exit(f"Échec de la construction Linux :\n{sortie[-3000:]}")
+        binaire = SORTIE / "RandomizerREHD-linux"
+        shutil.copyfile(Path(tmp) / "RandomizerREHD-linux", binaire)
+        return binaire
+
+
+def ajouter_tar(tar, nom, donnees, mode):
+    info = tarfile.TarInfo(nom)
+    info.size, info.mode, info.mtime = len(donnees), mode, int(time.time())
+    tar.addfile(info, io.BytesIO(donnees))
+
+
 def main():
     # Barres d'avancement (images/progression.svg et section du README) à jour avant la copie
     progression.mettre_a_jour(ICI / "donnees_randomizer_RE1.xlsx", ICI / "README.md",
@@ -111,6 +168,15 @@ def main():
         z.write(ICI / "LISEZ-MOI_testeur.txt", "LISEZ-MOI.txt")
     exe.unlink()
     print(f"Archive prête : {archive} ({archive.stat().st_size // 1024} Ko)")
+
+    binaire = construire_linux(DEPOT)
+    if binaire:
+        archive_linux = SORTIE / f"RandomizerREHD-v{VERSION}-linux.tar.gz"
+        with tarfile.open(archive_linux, "w:gz") as tar:          # tar.gz : garde le droit d'exécution
+            ajouter_tar(tar, "RandomizerREHD/RandomizerREHD-linux", binaire.read_bytes(), 0o755)
+            ajouter_tar(tar, "RandomizerREHD/LISEZ-MOI.txt", (ICI / "LISEZ-MOI_linux.txt").read_bytes(), 0o644)
+        binaire.unlink()
+        print(f"Archive Linux prête : {archive_linux} ({archive_linux.stat().st_size // 1024} Ko)")
 
 
 if __name__ == "__main__":

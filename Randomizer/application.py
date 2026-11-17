@@ -9,22 +9,27 @@ Construire le .exe   :  construire_exe.bat
 """
 import os
 import shutil
+import subprocess
 import sys
 import threading
 import webbrowser
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from tkinter import font as tkfont
 
 import generateur_seed as gen
 import progression
 import textes
 
-VERSION = "0.5"
+VERSION = "0.6"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
 TITRE = f"Randomizer RE HD Remaster v{VERSION}"
+SOUS_WINDOWS = sys.platform == "win32"
+# Le jeu tourne sous Proton sur Linux / Steam Deck : la DLL doit être préférée à celle de Proton.
+OPTION_PROTON = 'WINEDLLOVERRIDES="xinput1_4=n,b" %command%'
 
 
 def dossier_programme():
@@ -320,14 +325,46 @@ def appliquer_style(racine):
     racine.option_add("*TCombobox*Listbox.font", (POLICE, 10))
 
 
+# Polices candidates, de la préférée à la plus courante (Windows puis Linux / Steam Deck)
+CANDIDATES_POLICES = {
+    "base": ("Segoe UI", "Noto Sans", "Cantarell", "DejaVu Sans", "Helvetica"),
+    "ja": ("Yu Gothic UI", "Noto Sans CJK JP", "Noto Sans JP", "IPAGothic", "Droid Sans Fallback", "Helvetica"),
+    "zh": ("Microsoft YaHei UI", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", "Droid Sans Fallback",
+           "Helvetica"),
+    "mono": ("Consolas", "DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Courier"),
+}
+POLICE_MONO = "Consolas"
+
+
+def premiere_police(candidates):
+    """Première police installée de la liste (la dernière, générique, sinon)."""
+    try:
+        installees = set(tkfont.families())
+    except tk.TclError:
+        installees = set()
+    return next((p for p in candidates if p in installees), candidates[-1])
+
+
 def choisir_police(langue):
-    """Police de l'interface : Segoe UI, ou une police avec idéogrammes pour le japonais et le chinois."""
-    global POLICE
-    POLICE = textes.POLICES.get(langue, "Segoe UI")
+    """Polices de l'interface : une police avec idéogrammes pour le japonais et le chinois."""
+    global POLICE, POLICE_MONO
+    POLICE = premiere_police(CANDIDATES_POLICES.get(langue if langue in ("ja", "zh") else "base"))
+    POLICE_MONO = premiere_police(CANDIDATES_POLICES["mono"])
+
+
+def ouvrir(chemin):
+    """Ouvre un fichier ou un dossier avec le programme du système."""
+    if SOUS_WINDOWS:
+        os.startfile(chemin)
+    else:
+        subprocess.Popen(["xdg-open", str(chemin)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def fichier_preferences():
-    base = Path(os.environ.get("APPDATA") or Path.home())
+    if os.environ.get("APPDATA"):
+        base = Path(os.environ["APPDATA"])
+    else:                                       # Linux : ~/.config
+        base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
     return base / "RandomizerREHD" / "preferences.ini"
 
 
@@ -377,10 +414,14 @@ class Application(tk.Tk):
         super().__init__()
         self.title(TITRE)
         self.minsize(740, 760)
-        icone = trouver_ressource("icone.ico", ("",))
+        icone = trouver_ressource("icone.ico" if SOUS_WINDOWS else "icone.png", ("",))
         if icone:
             try:
-                self.iconbitmap(default=str(icone))   # barre de titre et barre des tâches
+                if SOUS_WINDOWS:
+                    self.iconbitmap(default=str(icone))   # barre de titre et barre des tâches
+                else:
+                    self._icone = tk.PhotoImage(file=str(icone))
+                    self.iconphoto(True, self._icone)
             except tk.TclError:
                 pass
         self.preference_langue = lire_langue()                 # « auto » ou un code de langue
@@ -425,7 +466,7 @@ class Application(tk.Tk):
 
     def police_texte(self):
         """Police des zones de texte : Consolas (latin, cyrillique) ou la police de la langue."""
-        return ("Consolas", 10) if self.langue.get() not in textes.POLICES else (POLICE, 10)
+        return (POLICE_MONO, 10) if self.langue.get() not in ("ja", "zh") else (POLICE, 10)
 
     def construire(self):
         self.racine = racine = ttk.Frame(self, padding=(20, 16, 20, 20))
@@ -444,7 +485,8 @@ class Application(tk.Tk):
         self.choix_langue.set(auto if self.preference_langue == "auto" else textes.LANGUES[self.langue.get()])
         self.choix_langue.pack(side="right", pady=(8, 0))
         self.choix_langue.bind("<<ComboboxSelected>>", lambda _: self.changer_langue())
-        ttk.Label(entete, text="🌐", style="SousTitre.TLabel").pack(side="right", padx=(0, 6), pady=(8, 0))
+        if SOUS_WINDOWS:                            # sous Linux, pas toujours de police d'emoji
+            ttk.Label(entete, text="🌐", style="SousTitre.TLabel").pack(side="right", padx=(0, 6), pady=(8, 0))
 
         self.onglets = ttk.Notebook(racine)
         self.onglets.pack(fill="both", expand=True)
@@ -513,6 +555,18 @@ class Application(tk.Tk):
         self.bouton_retirer_seed.pack(side="left")
         ttk.Label(j, text=self.t("note_desinstaller"),
                   style="Note.TLabel").grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        if not SOUS_WINDOWS or os.environ.get("RANDOMIZER_LINUX"):
+            # Sous Linux / Steam Deck, le jeu passe par Proton : l'option de lancement fait charger notre DLL
+            ttk.Label(j, text=self.t("proton_titre"), style="Carte.TLabel").grid(
+                row=5, column=0, columnspan=2, sticky="w", pady=(12, 2))
+            option = ttk.Entry(j, font=(POLICE_MONO, 10))
+            option.insert(0, OPTION_PROTON)
+            option.state(["readonly"])
+            option.grid(row=6, column=0, sticky="ew")
+            ttk.Button(j, text=self.t("copier"), command=self.copier_option_proton).grid(
+                row=6, column=1, padx=(8, 0))
+            ttk.Label(j, text=self.t("proton_note"), style="Note.TLabel", wraplength=640,
+                      justify="left").grid(row=7, column=0, columnspan=2, sticky="w", pady=(4, 0))
 
         # --- Partie
         partie, p = self.carte(cadre, self.t("carte_partie"))
@@ -806,16 +860,21 @@ class Application(tk.Tk):
             messagebox.showerror(TITRE, self.t("err_copier_dll", e=e))
         self.actualiser_etat()
 
+    def copier_option_proton(self):
+        self.clipboard_clear()
+        self.clipboard_append(OPTION_PROTON)
+        self.ecrire(self.t("copie_ok"), effacer=True)
+
     def ouvrir_journal(self):
         journal = Path(self.dossier_jeu.get()) / "randomizer_journal.txt"
         if journal.exists():
-            os.startfile(journal)
+            ouvrir(journal)
         else:
             messagebox.showinfo(TITRE, self.t("pas_de_journal"))
 
     def ouvrir_seeds(self):
         self.dossier_seeds.mkdir(parents=True, exist_ok=True)
-        os.startfile(self.dossier_seeds)
+        ouvrir(self.dossier_seeds)
 
     def generer(self):
         try:

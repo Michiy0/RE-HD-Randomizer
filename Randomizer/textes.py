@@ -94,6 +94,32 @@ T = {
                           "●  Ninguna seed instalada", "●  Nenhuma seed instalada", "●  Сид не установлен",
                           "●  未安装种子"),
 
+    "proton_titre": ("Steam Deck / Linux : option de lancement du jeu", "Steam Deck / Linux: game launch option",
+                     "Steam Deck / Linux：ゲームの起動オプション", "Steam Deck / Linux: opción de lanzamiento del juego",
+                     "Steam Deck / Linux: opção de inicialização do jogo",
+                     "Steam Deck / Linux: параметр запуска игры", "Steam Deck / Linux：游戏启动选项"),
+    "proton_note": ("Le jeu tourne sous Proton : colle cette option une fois dans Steam (Propriétés du jeu → "
+                    "Options de lancement) pour que la DLL soit chargée.",
+                    "The game runs under Proton: paste this option once in Steam (game Properties → Launch "
+                    "Options) so the DLL is loaded.",
+                    "ゲームは Proton で動作します：DLL を読み込ませるため、Steam（ゲームのプロパティ → 起動オプション）に"
+                    "この設定を一度貼り付けてください。",
+                    "El juego funciona con Proton: pega esta opción una vez en Steam (Propiedades del juego → "
+                    "Opciones de lanzamiento) para que se cargue la DLL.",
+                    "O jogo roda no Proton: cole esta opção uma vez no Steam (Propriedades do jogo → Opções de "
+                    "inicialização) para que a DLL seja carregada.",
+                    "Игра работает через Proton: один раз вставьте этот параметр в Steam (Свойства игры → "
+                    "Параметры запуска), чтобы DLL загружалась.",
+                    "游戏通过 Proton 运行：请将此选项粘贴到 Steam（游戏属性 → 启动选项）中一次，以便加载 DLL。"),
+    "copier": ("Copier", "Copy", "コピー", "Copiar", "Copiar", "Копировать", "复制"),
+    "copie_ok": ("Option de lancement copiée : colle-la dans Steam, Propriétés du jeu → Options de lancement.",
+                 "Launch option copied: paste it in Steam, game Properties → Launch Options.",
+                 "起動オプションをコピーしました：Steam のゲームのプロパティ → 起動オプションに貼り付けてください。",
+                 "Opción de lanzamiento copiada: pégala en Steam, Propiedades del juego → Opciones de lanzamiento.",
+                 "Opção de inicialização copiada: cole-a no Steam, Propriedades do jogo → Opções de inicialização.",
+                 "Параметр запуска скопирован: вставьте его в Steam, Свойства игры → Параметры запуска.",
+                 "已复制启动选项：请粘贴到 Steam 的 游戏属性 → 启动选项 中。"),
+
     # ------------------------------------------------------------ carte Partie
     "personnage": ("Personnage", "Character", "キャラクター", "Personaje", "Personagem", "Персонаж", "角色"),
     "difficulte": ("Difficulté", "Difficulty", "難易度", "Dificultad", "Dificuldade", "Сложность", "难度"),
@@ -513,7 +539,16 @@ def tr(cle, langue="fr", **valeurs):
 
 
 def langue_systeme():
-    """Langue de Windows si elle est disponible, sinon l'anglais."""
+    """Langue du système (Windows ou Linux) si elle est disponible, sinon l'anglais."""
+    import sys
+    if sys.platform != "win32":
+        import os
+        for variable in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+            valeur = os.environ.get(variable, "")
+            if valeur and valeur not in ("C", "POSIX"):
+                code = valeur.split(":")[0][:2].lower()
+                return code if code in LANGUES else PAR_DEFAUT
+        return PAR_DEFAUT
     try:
         import ctypes
         primaire = ctypes.windll.kernel32.GetUserDefaultUILanguage() & 0x3FF

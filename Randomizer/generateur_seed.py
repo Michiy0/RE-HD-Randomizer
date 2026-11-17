@@ -146,7 +146,12 @@ def trouver_dossier_jeu():
                 pass
     except ImportError:
         pass
-    racines.append(Path(r"C:\Program Files (x86)\Steam"))
+    if sys.platform == "win32":
+        racines.append(Path(r"C:\Program Files (x86)\Steam"))
+    else:                                   # Linux, Steam Deck (Steam natif ou Flatpak)
+        maison = Path.home()
+        racines += [maison / ".steam" / "steam", maison / ".steam" / "root", maison / ".local" / "share" / "Steam",
+                    maison / ".var" / "app" / "com.valvesoftware.Steam" / ".local" / "share" / "Steam"]
 
     bibliotheques = []
     for r in racines:

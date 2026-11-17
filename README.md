@@ -8,7 +8,7 @@ on peut donc jouer à plusieurs sur la même seed et comparer.
 > Projet de fan, **non officiel**, sans lien avec Capcom. Aucun fichier du jeu n'est inclus : il faut
 > posséder Resident Evil HD Remaster sur Steam.
 
-## État : version 0.5 (test)
+## État : version 0.6 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -55,7 +55,7 @@ Armes bonus : liste à compléter. Mis à jour le 17/11/2026.
 
 ## Installation (joueurs)
 
-1. Télécharge le zip de la dernière version (`RandomizerREHD-v….zip`) dans l'onglet **Releases** et extrais-le où tu veux.
+1. Télécharge le zip de la dernière version (`RandomizerREHD-v….zip` ; sur Linux / Steam Deck : `RandomizerREHD-v…-linux.tar.gz`, voir plus bas) dans l'onglet **Releases** et extrais-le où tu veux.
 2. Lance `RandomizerREHD.exe`. Le dossier du jeu est trouvé automatiquement (sinon : « Parcourir… »).
 3. Clique **Installer la DLL** (une seule fois).
 4. Coche tes options, puis **Générer la seed** (laisse cochée « Installer la seed dans le jeu »).
@@ -67,6 +67,22 @@ Pour changer de seed : générer une nouvelle seed, puis relancer le jeu.
 « Windows a protégé votre ordinateur » → « Informations complémentaires » → « Exécuter quand même ».
 Certains antivirus peuvent aussi signaler la DLL par erreur : elle utilise un point d'arrêt matériel
 (comme Cheat Engine) pour lire l'objet ramassé. Le code source complet est dans ce dépôt.
+
+### Linux / Steam Deck
+
+Une version Linux native de l'application existe (`RandomizerREHD-linux`, un seul fichier) : sur Steam Deck,
+passe en **mode Bureau**, rends le fichier exécutable (clic droit → Propriétés → Permissions → « Est
+exécutable ») puis double-clique dessus. Le jeu est trouvé automatiquement dans la bibliothèque Steam.
+
+Le jeu, lui, tourne toujours avec Proton : après **Installer la DLL**, copie l'option affichée dans la carte
+*Jeu* (bouton **Copier**) et colle-la une fois dans Steam, *Propriétés du jeu → Options de lancement* :
+
+```
+WINEDLLOVERRIDES="xinput1_4=n,b" %command%
+```
+
+> Le fonctionnement de la DLL sous Proton n'a pas encore été confirmé sur un vrai Steam Deck : un retour
+> (fichier `randomizer_journal.txt`) est le bienvenu.
 
 ### Revenir au jeu d'origine
 
@@ -103,7 +119,8 @@ DLL\compiler.bat
 Randomizer\construire_exe.bat
 ```
 
-L'exe est créé dans `Randomizer\dist\`. Sans compiler : `python Randomizer\application.py`, ou en ligne
+L'exe est créé dans `Randomizer\dist\`. Version Linux (sous Linux ou WSL, Ubuntu 22.04 conseillé pour
+rester compatible avec le Steam Deck) : `sh DLL/compiler.sh` puis `sh Randomizer/construire_linux.sh`. Sans compiler : `python Randomizer\application.py`, ou en ligne
 de commande `python Randomizer\generateur_seed.py 12345 --armes-aleatoires --installer`.
 
 ## Contribuer : relever des emplacements
@@ -136,7 +153,7 @@ GPLv3 — voir [LICENSE](LICENSE).
 
 Item randomizer for **Resident Evil HD Remaster (Steam)**. Unofficial fan project; no game files included.
 
-- **Version 0.5 (test)**: Chris / Normal only, 34 placed-item locations (ammo, herbs, ink ribbons, daggers,
+- **Version 0.6 (test)**: Chris / Normal only, 34 placed-item locations (ammo, herbs, ink ribbons, daggers,
   first aid boxes), optional *random weapons*. Keys, Jill and other difficulties are planned.
 - **Requires** the current Steam `bhd.exe` (9,640,360 bytes, SHA-256 above). On any other version the
   randomizer stays inactive and the game is untouched.
