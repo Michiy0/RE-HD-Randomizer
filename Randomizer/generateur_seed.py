@@ -86,6 +86,10 @@ def lire_emplacements(chemin):
         }
         if fiche["chemin"] != "posé" or not fiche["empreinte"]:
             ignores.append((fiche, "pas de valeurs fixes complètes ou pas un objet posé"))
+        elif qte is None:
+            # sans quantité, on placerait par exemple un chargeur vide ailleurs : on laisse l'objet en place
+            fiche["description"] = (fiche["description"] or "") + " (quantité inconnue)"
+            ignores.append((fiche, "quantité inconnue"))
         else:
             emplacements.append(fiche)
     return emplacements, ignores

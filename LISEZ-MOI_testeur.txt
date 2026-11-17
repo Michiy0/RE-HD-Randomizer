@@ -1,4 +1,4 @@
-﻿RANDOMIZER RESIDENT EVIL HD REMASTER — version 0.2 (test)
+﻿RANDOMIZER RESIDENT EVIL HD REMASTER — version 0.3 (test)
 ==========================================================
 
 Merci de tester ! Il faut le jeu sur Steam, à jour.
@@ -24,6 +24,11 @@ ME RENVOYER
 - Le fichier ouvert par le bouton « Journal du jeu » (randomizer_journal.txt),
 - le numéro de graine et les options cochées,
 - ce que tu as remarqué (plantage, objet bizarre, rien de changé…).
+
+AIDER LE PROJET (FACULTATIF)
+Coche « Mode relevé » dans l'application, lance une nouvelle partie et visite
+les pièces sans rien ramasser (reste 2 secondes dans chacune). Les objets
+présents sont notés dans le journal du jeu : envoie-le-moi.
 
 REVENIR AU JEU NORMAL
 Dans l'application : « Désinstaller la DLL ». C'est tout.

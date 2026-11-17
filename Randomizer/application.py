@@ -17,7 +17,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import generateur_seed as gen
 
-VERSION = "0.2"
+VERSION = "0.3"
 TAILLE_BHD_EXE = 9640360
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
 TITRE = f"Randomizer RE HD Remaster v{VERSION}"
@@ -66,6 +66,46 @@ def version_jeu_ok(dossier):
             ok = h.hexdigest().upper() == SHA256_BHD_EXE
         _versions_verifiees[cle] = ok
     return _versions_verifiees[cle]
+
+
+def lire_option_ini(dossier, cle):
+    """Valeur d'une option de la section [Randomizer] de randomizer.ini (None si absente)."""
+    ini = Path(dossier) / "randomizer.ini"
+    if not ini.exists():
+        return None
+    section = False
+    for ligne in ini.read_text(encoding="utf-8", errors="replace").splitlines():
+        l = ligne.strip()
+        if l.startswith("["):
+            section = l.lower() == "[randomizer]"
+        elif section and not l.startswith(";") and "=" in l and l.split("=", 1)[0].strip().lower() == cle.lower():
+            return l.split("=", 1)[1].strip()
+    return None
+
+
+def ecrire_option_ini(dossier, cle, valeur):
+    """Règle (ou retire si valeur est None) une option de [Randomizer] en gardant le reste du fichier."""
+    ini = Path(dossier) / "randomizer.ini"
+    lignes = ini.read_text(encoding="utf-8", errors="replace").splitlines() if ini.exists() else []
+    if not any(l.strip().lower() == "[randomizer]" for l in lignes):
+        lignes = ["[Randomizer]"] + lignes
+    resultat, section, fait = [], False, False
+    for ligne in lignes:
+        l = ligne.strip()
+        if l.startswith("["):
+            if section and not fait and valeur is not None:
+                resultat.append(f"{cle}={valeur}")
+                fait = True
+            section = l.lower() == "[randomizer]"
+        elif section and not l.startswith(";") and "=" in l and l.split("=", 1)[0].strip().lower() == cle.lower():
+            if valeur is not None and not fait:
+                resultat.append(f"{cle}={valeur}")
+                fait = True
+            continue
+        resultat.append(ligne)
+    if section and not fait and valeur is not None:
+        resultat.append(f"{cle}={valeur}")
+    ini.write_text("\r\n".join(resultat) + "\r\n", encoding="utf-8", newline="")
 
 
 def est_notre_dll(chemin):
@@ -287,6 +327,7 @@ class Application(tk.Tk):
         self.dossier_jeu = tk.StringVar(value=str(jeu) if jeu else "")
         self.installer = tk.BooleanVar(value=True)
         self.afficher_spoiler = tk.BooleanVar(value=False)
+        self.releve = tk.BooleanVar(value=False)
         self.etat_jeu = tk.StringVar()
         self.dossier_seeds = dossier_programme() / "seeds"
 
@@ -376,6 +417,13 @@ class Application(tk.Tk):
                   style="Note.TLabel").grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Checkbutton(j, text="Installer la seed dans le jeu après génération",
                         variable=self.installer).grid(row=4, column=0, sticky="w", pady=(8, 0))
+        self.case_releve = ttk.Checkbutton(j, text="Mode relevé : noter les objets des pièces visitées "
+                                                   "(aide au projet)",
+                                           variable=self.releve, command=self.basculer_releve)
+        self.case_releve.grid(row=6, column=0, columnspan=2, sticky="w", pady=(2, 0))
+        ttk.Label(j, text="Petite saccade (~0,3 s) en entrant dans une pièce. Idéal en nouvelle partie ; "
+                          "envoie ensuite le journal du jeu.",
+                  style="Note.TLabel").grid(row=7, column=0, columnspan=2, sticky="w", padx=(27, 0))
 
         # --- Actions
         boutons = ttk.Frame(cadre)
@@ -433,9 +481,11 @@ class Application(tk.Tk):
                                      style="Alerte.TLabel")
             self.badge_seed.configure(text="")
             self.badge_version.configure(text="")
-            for b in (self.bouton_dll, self.bouton_retirer_dll, self.bouton_retirer_seed):
+            for b in (self.bouton_dll, self.bouton_retirer_dll, self.bouton_retirer_seed, self.case_releve):
                 b.state(["disabled"])
             return
+        self.case_releve.state(["!disabled"])
+        self.releve.set(lire_option_ini(d, "Releve") == "1")
         dll = d / "xinput1_4.dll"
         dll_ok = dll.exists()
         etranger = dll_ok and not est_notre_dll(dll)
@@ -462,6 +512,23 @@ class Application(tk.Tk):
         self.bouton_dll.state(["!disabled"] if self.dll and not etranger else ["disabled"])
         self.bouton_retirer_dll.state(["!disabled"] if dll_ok and not etranger else ["disabled"])
         self.bouton_retirer_seed.state(["!disabled"] if seed else ["disabled"])
+
+    def basculer_releve(self):
+        d = Path(self.dossier_jeu.get())
+        actif = self.releve.get()
+        try:
+            ecrire_option_ini(d, "Releve", "1" if actif else None)
+        except OSError as e:
+            messagebox.showerror(TITRE, f"Impossible de modifier randomizer.ini :\n{e}")
+            self.releve.set(not actif)
+            return
+        if actif:
+            self.ecrire("Mode relevé activé (au prochain lancement du jeu). À chaque nouvelle pièce, les objets "
+                        "présents sont notés dans le journal du jeu (lignes « Releve auto »)."
+                        + ("" if (d / "xinput1_4.dll").exists() else
+                           "\nAttention : la DLL n'est pas installée, clique « Installer la DLL »."), effacer=True)
+        else:
+            self.ecrire("Mode relevé désactivé (au prochain lancement du jeu).", effacer=True)
 
     def supprimer(self, fichier, quoi):
         try:

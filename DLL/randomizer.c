@@ -208,11 +208,326 @@ static void traiter_objet(DWORD structure)
     }
 }
 
+/* ------------------------------------------------ mode diagnostic (relevés) */
+
+/* Activé par Diagnostic=1 dans randomizer.ini. À chaque objet examiné ou ramassé, écrit dans
+ * randomizer_diagnostic.txt de quoi retrouver le tableau des objets de la pièce : adresse de la
+ * structure (et sa position dans la structure de partie), registres, haut de la pile et mémoire
+ * autour de l'objet. Aucun effet sur le jeu. */
+static int  g_diagnostic;
+static char g_fichier_diag[MAX_PATH];
+static int  g_nb_diag;
+#define MAX_DIAG       60
+#define DIAG_AVANT     0x100
+#define DIAG_APRES     0x400
+
+static void diag_ajouter(char *tampon, int *n, int taille, const char *fmt, ...)
+{
+    va_list ap;
+    int k;
+    if (*n >= taille - 1) return;
+    va_start(ap, fmt);
+    k = _vsnprintf(tampon + *n, taille - 1 - *n, fmt, ap);
+    va_end(ap);
+    *n = (k < 0 || *n + k > taille - 1) ? taille - 1 : *n + k;
+}
+
+static void diagnostiquer(const CONTEXT *c)
+{
+    static char t[24576];
+    int n = 0, i;
+    DWORD piece = 0, partie = 0, s = c->Eax, adr, ecrit;
+    SYSTEMTIME h;
+    HANDLE f;
+
+    if (g_nb_diag >= MAX_DIAG) return;
+    g_nb_diag++;
+    GetLocalTime(&h);
+    piece_actuelle(&piece);
+    if (lisible((void *)ADR_PTR_PARTIE, 4, 0)) partie = *(DWORD *)ADR_PTR_PARTIE;
+
+    diag_ajouter(t, &n, sizeof t, "==== releve %d  %02d:%02d:%02d  piece=%X\r\n", g_nb_diag,
+                 h.wHour, h.wMinute, h.wSecond, piece);
+    diag_ajouter(t, &n, sizeof t, "struct(EAX)=%08X  partie=%08X  struct-partie=%s%X\r\n", s, partie,
+                 s >= partie ? "+" : "-", s >= partie ? s - partie : partie - s);
+    if (lisible((void *)(s + 0x34), 4, 0))
+        diag_ajouter(t, &n, sizeof t, "id=%u qte=%u\r\n", *(DWORD *)(s + 0x34) >> 16, *(DWORD *)(s + 0x34) & 0xFFFF);
+    diag_ajouter(t, &n, sizeof t, "EBX=%08X ECX=%08X EDX=%08X ESI=%08X EDI=%08X EBP=%08X ESP=%08X\r\n",
+                 c->Ebx, c->Ecx, c->Edx, c->Esi, c->Edi, c->Ebp, c->Esp);
+    diag_ajouter(t, &n, sizeof t, "pile:");
+    for (i = 0; i < 16; i++) {
+        adr = c->Esp + 4 * i;
+        if (lisible((void *)adr, 4, 0)) diag_ajouter(t, &n, sizeof t, " %08X", *(DWORD *)adr);
+    }
+    diag_ajouter(t, &n, sizeof t, "\r\nmemoire (decalage par rapport a la structure) :\r\n");
+    for (adr = s > DIAG_AVANT ? s - DIAG_AVANT : 0; adr < s + DIAG_APRES; adr += 16) {
+        const BYTE *o = (const BYTE *)adr;
+        diag_ajouter(t, &n, sizeof t, "%c%04X ", adr >= s ? '+' : '-', adr >= s ? adr - s : s - adr);
+        if (!lisible(o, 16, 0)) { diag_ajouter(t, &n, sizeof t, " (illisible)\r\n"); continue; }
+        for (i = 0; i < 16; i += 4)
+            diag_ajouter(t, &n, sizeof t, " %08X", *(const DWORD *)(o + i));
+        diag_ajouter(t, &n, sizeof t, "\r\n");
+    }
+    diag_ajouter(t, &n, sizeof t, "\r\n");
+
+    f = CreateFileA(g_fichier_diag, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                    OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+        WriteFile(f, t, (DWORD)n, &ecrit, NULL);
+        CloseHandle(f);
+    }
+}
+
+/* ------------------------------- diagnostic : recherches dans la mémoire */
+
+/* Signature des objets posés ramassables (adresses dans les données de bhd.exe, fixes car pas d'ASLR) :
+ * +0x00 = 00C233F4 et +0x08 = 00C2286C. +0x10..+0x2C = zone de ramassage (4 coins x,z) = empreinte,
+ * +0x34 = (id << 16) | quantité, +0x3C = numéro de l'objet dans la pièce. */
+#define SIGNATURE_OBJET   0x00C233F4u
+#define SIGNATURE_OBJET2  0x00C2286Cu
+#define MAX_TROUVES       128
+#define MAX_SCANS         40
+
+static HINSTANCE g_inst;                 /* notre DLL : exclue des recherches */
+static int g_nb_scans;
+
+/* Copie la mémoire avec ReadProcessMemory : une zone qui disparaît pendant la lecture donne un échec,
+ * pas un plantage du jeu. */
+static int copier(DWORD adr, void *dest, DWORD taille)
+{
+    SIZE_T lu = 0;
+    return ReadProcessMemory(GetCurrentProcess(), (LPCVOID)adr, dest, taille, &lu) && lu == taille;
+}
+
+typedef void (*Visiteur)(DWORD base, const BYTE *tampon, DWORD taille, void *ctx);
+
+static void parcourir_memoire(Visiteur visiter, void *ctx)
+{
+    static BYTE tampon[65536];
+    MEMORY_BASIC_INFORMATION mbi;
+    DWORD adr = 0x10000;
+    const DWORD ecriture = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+
+    while (adr < 0xFFFE0000u && VirtualQuery((LPCVOID)adr, &mbi, sizeof mbi)) {
+        DWORD base = (DWORD)mbi.BaseAddress, fin = base + (DWORD)mbi.RegionSize, a;
+        if (fin <= adr) break;                                 /* fin de l'espace d'adressage */
+        if (mbi.State == MEM_COMMIT && (mbi.Protect & ecriture) && !(mbi.Protect & PAGE_GUARD)
+            && mbi.AllocationBase != (PVOID)g_inst) {
+            for (a = base; a < fin; a += sizeof tampon) {
+                DWORD n = fin - a < sizeof tampon ? fin - a : sizeof tampon;
+                if (copier(a, tampon, n)) visiter(a, tampon, n, ctx);
+            }
+        }
+        adr = fin;
+    }
+}
+
+typedef struct { DWORD adr[MAX_TROUVES]; int nb; DWORD cible; } Trouves;
+
+static void visiter_signature(DWORD base, const BYTE *t, DWORD n, void *ctx)
+{
+    Trouves *r = (Trouves *)ctx;
+    DWORD i;
+    for (i = 0; i + 12 <= n; i += 16)
+        if (*(const DWORD *)(t + i) == SIGNATURE_OBJET && *(const DWORD *)(t + i + 8) == SIGNATURE_OBJET2
+            && r->nb < MAX_TROUVES)
+            r->adr[r->nb++] = base + i;
+}
+
+static void visiter_pointeur(DWORD base, const BYTE *t, DWORD n, void *ctx)
+{
+    Trouves *r = (Trouves *)ctx;
+    DWORD i;
+    for (i = 0; i + 4 <= n; i += 4)
+        if (*(const DWORD *)(t + i) == r->cible && r->nb < MAX_TROUVES)
+            r->adr[r->nb++] = base + i;
+}
+
+static void ecrire_diag(const char *t, int n)
+{
+    DWORD ecrit;
+    HANDLE f = CreateFileA(g_fichier_diag, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+        WriteFile(f, t, (DWORD)n, &ecrit, NULL);
+        CloseHandle(f);
+    }
+}
+
+/* Liste tous les objets posés présents en mémoire (appelé peu après un changement de pièce). */
+static void scanner_piece(DWORD piece)
+{
+    static Trouves r;
+    static char t[65536];
+    int n = 0, k, i;
+    SYSTEMTIME h;
+    DWORD debut = GetTickCount();
+
+    if (g_nb_scans >= MAX_SCANS) return;
+    g_nb_scans++;
+    r.nb = 0;
+    parcourir_memoire(visiter_signature, &r);
+    GetLocalTime(&h);
+    diag_ajouter(t, &n, sizeof t, "==== scan %d  %02d:%02d:%02d  piece=%X : %d objet(s) a la signature (%lu ms)\r\n",
+                 g_nb_scans, h.wHour, h.wMinute, h.wSecond, piece, r.nb, (unsigned long)(GetTickCount() - debut));
+    for (k = 0; k < r.nb; k++) {
+        DWORD o[0x70 / 4];                     /* -0x30 .. +0x40 */
+        if (!copier(r.adr[k] - 0x30, o, sizeof o)) {
+            diag_ajouter(t, &n, sizeof t, "obj %08X  (illisible)\r\n", r.adr[k]);
+            continue;
+        }
+        diag_ajouter(t, &n, sizeof t, "obj %08X  id=%u qte=%u num=%u  +30=%08X +0C=%08X  valeurs=%X:",
+                     r.adr[k], o[(0x30 + 0x34) / 4] >> 16, o[(0x30 + 0x34) / 4] & 0xFFFF, o[(0x30 + 0x3C) / 4],
+                     o[(0x30 + 0x30) / 4], o[(0x30 + 0x0C) / 4], piece);
+        for (i = 0; i < 8; i++)
+            diag_ajouter(t, &n, sizeof t, i ? ",%08X" : "%08X", o[(0x30 + 0x10) / 4 + i]);
+        diag_ajouter(t, &n, sizeof t, "\r\n    entete:");
+        for (i = 0; i < 12; i++) diag_ajouter(t, &n, sizeof t, " %08X", o[i]);
+        diag_ajouter(t, &n, sizeof t, "\r\n    +40..4F:");
+        for (i = 0; i < 4; i++) diag_ajouter(t, &n, sizeof t, " %08X", o[(0x30 + 0x30) / 4 + i]);
+        diag_ajouter(t, &n, sizeof t, "\r\n");
+    }
+    diag_ajouter(t, &n, sizeof t, "\r\n");
+    ecrire_diag(t, n);
+}
+
+/* Cherche qui pointe vers l'objet ramassé (pour trouver la liste des objets de la pièce). */
+typedef struct { DWORD s, partie, ebx, ecx, esi, edi, piece; } Ramassage;
+static Ramassage g_file[16];
+static volatile LONG g_file_ecrit, g_file_lu;
+
+static const char *repere(DWORD a, const Ramassage *p, DWORD *decalage)
+{
+    struct { const char *nom; DWORD v; } refs[] = {
+        { "partie", p->partie }, { "ECX", p->ecx }, { "ESI", p->esi }, { "EBX", p->ebx }, { "EDI", p->edi } };
+    int i;
+    for (i = 0; i < 5; i++)
+        if (refs[i].v && a >= refs[i].v && a - refs[i].v < 0x200000) { *decalage = a - refs[i].v; return refs[i].nom; }
+    return NULL;
+}
+
+static void chercher_pointeurs(const Ramassage *p)
+{
+    static Trouves r;
+    static char t[32768];
+    int n = 0, k, i;
+    DWORD debut = GetTickCount();
+
+    r.nb = 0;
+    r.cible = p->s;
+    parcourir_memoire(visiter_pointeur, &r);
+    diag_ajouter(t, &n, sizeof t, "==== pointeurs vers l'objet %08X (piece %X) : %d trouve(s) (%lu ms)\r\n",
+                 p->s, p->piece, r.nb, (unsigned long)(GetTickCount() - debut));
+    for (k = 0; k < r.nb; k++) {
+        DWORD v[16], dec = 0;
+        const char *nom = repere(r.adr[k], p, &dec);
+        diag_ajouter(t, &n, sizeof t, "a %08X", r.adr[k]);
+        if (nom) diag_ajouter(t, &n, sizeof t, " (= %s+%X)", nom, dec);
+        if (copier(r.adr[k] - 0x20, v, sizeof v)) {
+            diag_ajouter(t, &n, sizeof t, "\r\n   -20:");
+            for (i = 0; i < 16; i++) diag_ajouter(t, &n, sizeof t, i == 8 ? " |%08X" : " %08X", v[i]);
+        }
+        diag_ajouter(t, &n, sizeof t, "\r\n");
+    }
+    diag_ajouter(t, &n, sizeof t, "\r\n");
+    ecrire_diag(t, n);
+}
+
+static void noter_ramassage(const CONTEXT *c)
+{
+    LONG i = InterlockedIncrement(&g_file_ecrit) - 1;
+    Ramassage *p;
+    if (i - g_file_lu >= 16) return;                 /* file pleine : tant pis pour ce relevé */
+    p = &g_file[i & 15];
+    p->s = c->Eax; p->ebx = c->Ebx; p->ecx = c->Ecx; p->esi = c->Esi; p->edi = c->Edi;
+    p->partie = lisible((void *)ADR_PTR_PARTIE, 4, 0) ? *(DWORD *)ADR_PTR_PARTIE : 0;
+    p->piece = 0;
+    piece_actuelle(&p->piece);
+}
+
+/* --------------------------------------------- mode relevé (Releve=1) */
+
+/* À chaque nouvelle pièce, note dans le journal les objets posés encore présents, sans rien ramasser.
+ * Seuls les vrais objets sont gardés : type 4 en +0x30 (octet bas), numéro d'objet de la pièce non nul
+ * (+0x30, 16 bits hauts) et id non nul. Les « jumeaux » (+0x30 = 00000004) et autres zones sont écartés.
+ * Validé le 17/11/2026 : 112 → 3 objets, 214 → 4 objets, retour en 112 → 3 objets, sans objet fantôme. */
+static int g_releve;
+#define MAX_DEJA_NOTES 4096
+static DWORD g_deja_notes[MAX_DEJA_NOTES];
+static int   g_nb_deja_notes;
+
+static int est_objet_reel(const DWORD *o)        /* o = les 0x40 premiers octets de l'objet */
+{
+    return (o[0x30 / 4] & 0xFF) == 0x04 && (o[0x30 / 4] >> 16) != 0 && (o[0x34 / 4] >> 16) != 0;
+}
+
+static DWORD empreinte_cle(DWORD piece, const DWORD *zone)
+{
+    DWORD h = 2166136261u ^ piece;                  /* FNV-1a sur la pièce et les 8 valeurs */
+    int i;
+    for (i = 0; i < 8; i++) { h ^= zone[i]; h *= 16777619u; }
+    return h ? h : 1;
+}
+
+static int deja_note(DWORD cle)
+{
+    int i;
+    for (i = 0; i < g_nb_deja_notes; i++) if (g_deja_notes[i] == cle) return 1;
+    if (g_nb_deja_notes < MAX_DEJA_NOTES) g_deja_notes[g_nb_deja_notes++] = cle;
+    return 0;
+}
+
+static void releve_piece(DWORD piece)
+{
+    static Trouves r;
+    int k, reels = 0, nouveaux = 0;
+    DWORD debut = GetTickCount();
+
+    r.nb = 0;
+    parcourir_memoire(visiter_signature, &r);
+    for (k = 0; k < r.nb; k++) {
+        DWORD o[0x40 / 4];
+        if (!copier(r.adr[k], o, sizeof o) || !est_objet_reel(o)) continue;
+        reels++;
+        if (deja_note(empreinte_cle(piece, &o[0x10 / 4]))) continue;
+        nouveaux++;
+        journal("Releve auto\tpiece=%X\tid=%u\tqte=%u\tnum=%u\tobj=%X\tvaleurs=%X:%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X",
+                piece, o[0x34 / 4] >> 16, o[0x34 / 4] & 0xFFFF, o[0x3C / 4], o[0x30 / 4] >> 16, piece,
+                o[4], o[5], o[6], o[7], o[8], o[9], o[10], o[11]);
+    }
+    journal("Releve piece %X : %d objet(s) present(s), %d nouveau(x) (%lu ms)", piece, reels, nouveaux,
+            (unsigned long)(GetTickCount() - debut));
+}
+
+/* Appelée régulièrement par le thread de surveillance (modes diagnostic et relevé). */
+static void diagnostic_periodique(void)
+{
+    static DWORD derniere_piece = 0xFFFFFFFF, piece_stable, depuis;
+    DWORD piece;
+
+    while (g_diagnostic && g_file_lu < g_file_ecrit) {
+        chercher_pointeurs(&g_file[g_file_lu & 15]);
+        InterlockedIncrement(&g_file_lu);
+    }
+    if (!piece_actuelle(&piece) || piece == 0) return;   /* 0 : chargement ou menu */
+    if (piece != piece_stable) { piece_stable = piece; depuis = GetTickCount(); return; }
+    /* pièce stable depuis 1,5 s et différente de la dernière traitée */
+    if (piece != derniere_piece && GetTickCount() - depuis >= 1500) {
+        derniere_piece = piece;
+        if (g_releve) releve_piece(piece);
+        if (g_diagnostic) scanner_piece(piece);
+    }
+}
+
 static LONG CALLBACK gestionnaire(EXCEPTION_POINTERS *ep)
 {
     CONTEXT *c = ep->ContextRecord;
     if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP || c->Eip != ADR_LECTURE)
         return EXCEPTION_CONTINUE_SEARCH;
+    if (g_diagnostic && !g_coupe) {                    /* avant tout remplacement */
+        diagnostiquer(c);
+        noter_ramassage(c);                            /* recherche faite plus tard, hors du jeu */
+    }
     if (!g_coupe) traiter_objet(c->Eax);
     if (g_coupe) {                         /* on retire le point d'arrêt de ce thread tout de suite */
         c->Dr0 = 0;
@@ -290,6 +605,7 @@ static BOOL CALLBACK chercher_fenetre(HWND w, LPARAM trouve)
 static DWORD WINAPI surveillance(LPVOID inutile)
 {
     int fenetre = 0;
+    unsigned tour;
     (void)inutile;
 
     /* On attend que le jeu soit vraiment lancé (fenêtre visible) : avant, la protection Steam
@@ -304,14 +620,15 @@ static DWORD WINAPI surveillance(LPVOID inutile)
     InterlockedExchange(&g_actif, 1);
     journal("Point d'arret pose en bhd.exe+1512ED.");
 
-    for (;;) {
+    for (tour = 0;; tour++) {
         if (g_coupe) {
             parcourir_threads(0);
             journal("Points d'arret retires de tous les threads.");
             return 0;
         }
-        parcourir_threads(1);              /* arme les threads créés depuis le dernier passage */
-        Sleep(1000);
+        if (tour % 4 == 0) parcourir_threads(1);   /* arme les threads créés depuis le dernier passage */
+        if (g_diagnostic || g_releve) diagnostic_periodique();
+        Sleep(250);
     }
 }
 
@@ -327,7 +644,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.1 : demarrage");
+    journal("---- Randomizer RE HD v0.3 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
@@ -351,13 +668,24 @@ static void demarrer(void)
     else
         _snprintf(chemin_seed, MAX_PATH, "%s%s", g_dossier, seed);
 
-    if (!charger_seed(chemin_seed)) {
-        journal("Seed introuvable : %s. Le jeu tourne sans randomizer.", chemin_seed);
-        return;
+    g_diagnostic = GetPrivateProfileIntA("Randomizer", "Diagnostic", 0, ini);
+    if (g_diagnostic) {
+        _snprintf(g_fichier_diag, MAX_PATH, "%srandomizer_diagnostic.txt", g_dossier);
+        journal("Mode diagnostic actif : details dans randomizer_diagnostic.txt (%d releves au plus).", MAX_DIAG);
     }
-    journal("Seed %ld chargee : %d emplacements, armes aleatoires : %s. Fichier : %s",
-            g_graine, g_nb, g_armes == 1 ? "OUI" : g_armes == 0 ? "non" : "inconnu", chemin_seed);
-    if (g_nb == 0) return;
+    g_releve = GetPrivateProfileIntA("Randomizer", "Releve", 0, ini);
+    if (g_releve)
+        journal("Mode releve actif : les objets de chaque nouvelle piece sont notes ici (lignes Releve auto).");
+
+    if (!charger_seed(chemin_seed)) {
+        journal("Seed introuvable : %s. Le jeu tourne sans randomizer%s.", chemin_seed,
+                g_diagnostic || g_releve ? " (releve ou diagnostic seul)" : "");
+        if (!g_diagnostic && !g_releve) return;
+    } else {
+        journal("Seed %ld chargee : %d emplacements, armes aleatoires : %s. Fichier : %s",
+                g_graine, g_nb, g_armes == 1 ? "OUI" : g_armes == 0 ? "non" : "inconnu", chemin_seed);
+    }
+    if (g_nb == 0 && !g_diagnostic && !g_releve) return;
 
     CloseHandle(CreateThread(NULL, 0, surveillance, NULL, 0, NULL));
 }
@@ -416,6 +744,7 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD raison, LPVOID reserve)
     (void)reserve;
     if (raison == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(inst);
+        g_inst = inst;
         InitializeCriticalSection(&g_verrou_journal);
         demarrer();
     }

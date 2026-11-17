@@ -25,6 +25,26 @@ Supprimer `xinput1_4.dll` du dossier du jeu (le jeu reprend alors la DLL XInput 
 `randomizer_journal.txt` (dossier du jeu) : seed chargée, remplacements, objets non répertoriés
 (même format d'empreinte que `journal_non_repertorie.txt`), garde-fou.
 
+## Mode relevé (Releve=1)
+Case « Mode relevé » dans l'application, ou `Releve=1` dans `randomizer.ini`. À chaque nouvelle pièce
+(1,5 s après l'arrivée), la DLL cherche en mémoire les objets posés encore présents et les note dans
+`randomizer_journal.txt` (lignes `Releve auto` : pièce, id, quantité, numéro dans la pièce, empreinte),
+sans rien ramasser. Chaque objet n'est noté qu'une fois par lancement. Petite saccade (~0,3 s) à
+l'entrée des pièces. Les objets déjà ramassés n'existent plus : relevé complet = nouvelle partie.
+Le journal s'importe ensuite avec `importer_journal.py`.
+
+## Mode diagnostic (pour les relevés)
+`Diagnostic=1` dans `randomizer.ini` : à chaque objet examiné ou ramassé (60 au plus par lancement), la
+DLL écrit dans `randomizer_diagnostic.txt` l'adresse de la structure de l'objet, sa position par rapport
+à la structure de partie, les registres, le haut de la pile et la mémoire autour (−0x100 à +0x400).
+Sans effet sur le jeu ; fonctionne aussi sans seed installée.
+
+## Importer des journaux dans le tableur
+`python Randomizer\importer_journal.py randomizer_journal.txt [autres journaux…]` montre les nouveaux
+emplacements ; ajouter `--ecrire` (et éventuellement `--source "nom du testeur"`) pour les ajouter à
+l'onglet « Emplacements ». Lit aussi les journaux des scripts Cheat Engine. Doublons ignorés, sauvegarde
+automatique dans `sauvegardes\`.
+
 ## Points à savoir
 - Ne pas lancer `appliquer_seed.lua` dans Cheat Engine en même temps : les deux utilisent le même
   point d'arrêt matériel (DR0).
