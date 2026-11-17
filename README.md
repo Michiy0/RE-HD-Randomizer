@@ -8,12 +8,12 @@ on peut donc jouer à plusieurs sur la même seed et comparer.
 > Projet de fan, **non officiel**, sans lien avec Capcom. Aucun fichier du jeu n'est inclus : il faut
 > posséder Resident Evil HD Remaster sur Steam.
 
-## État : version 0.1 (test)
+## État : version 0.2 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal | Jill, autres difficultés |
-| 21 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
+| 24 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
 | Option **armes aléatoires** (le pistolet du hall est mélangé lui aussi) | Davantage d'emplacements |
 
 Les objets non pris en charge restent à leur place d'origine : la partie reste toujours finissable.
@@ -26,7 +26,7 @@ L'application le vérifie. Sur une autre version, le randomizer se met en veille
 
 ## Installation (joueurs)
 
-1. Télécharge `RandomizerREHD-v0.1.zip` dans l'onglet **Releases** et extrais-le où tu veux.
+1. Télécharge le zip de la dernière version (`RandomizerREHD-v….zip`) dans l'onglet **Releases** et extrais-le où tu veux.
 2. Lance `RandomizerREHD.exe`. Le dossier du jeu est trouvé automatiquement (sinon : « Parcourir… »).
 3. Clique **Installer la DLL** (une seule fois).
 4. Coche tes options, puis **Générer la seed** (laisse cochée « Installer la seed dans le jeu »).
@@ -99,7 +99,7 @@ GPLv3 — voir [LICENSE](LICENSE).
 
 Item randomizer for **Resident Evil HD Remaster (Steam)**. Unofficial fan project; no game files included.
 
-- **Version 0.1 (test)**: Chris / Normal only, 21 placed-item locations (ammo, herbs, ink ribbons, daggers,
+- **Version 0.2 (test)**: Chris / Normal only, 24 placed-item locations (ammo, herbs, ink ribbons, daggers,
   first aid boxes), optional *random weapons*. Keys, Jill and other difficulties are planned.
 - **Requires** the current Steam `bhd.exe` (9,640,360 bytes, SHA-256 above). On any other version the
   randomizer stays inactive and the game is untouched.

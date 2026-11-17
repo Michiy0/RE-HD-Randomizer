@@ -17,7 +17,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import generateur_seed as gen
 
-VERSION = "0.1"
+VERSION = "0.2"
 TAILLE_BHD_EXE = 9640360
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
 TITRE = f"Randomizer RE HD Remaster v{VERSION}"
