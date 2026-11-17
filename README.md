@@ -34,7 +34,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 | Chris, difficulté Normal | Jill, autres difficultés |
 | 34 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
 | Option **armes aléatoires** (le pistolet du hall est mélangé lui aussi) | Davantage d'emplacements, armes bonus |
-| Windows ; Steam Deck / Linux (application) | Confirmation du fonctionnement en jeu sur Steam Deck |
+| Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | — |
 
 **Version du jeu requise** : la version Steam actuelle de `bhd.exe` (9 640 360 octets, SHA-256
 `39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A`). L'application le vérifie ; sur une
@@ -105,8 +105,8 @@ toujours avec Proton.
    s'il est détecté) : la ligne devient `WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%`.
 4. **Générer la seed**, puis lance le jeu.
 
-> Le fonctionnement de la DLL dans le jeu sous Proton n'a pas encore été confirmé sur un vrai Steam
-> Deck : un retour (bouton **Journal du jeu**) est le bienvenu, qu'il marche ou non.
+> **Testé et confirmé sur Steam Deck** : la DLL fonctionne dans le jeu sous Proton (jeu installé sur la
+> carte SD). En cas de souci, le bouton **Journal du jeu** montre ce qui s'est passé.
 
 ### Revenir au jeu d'origine
 
@@ -258,7 +258,7 @@ or strategies.
 | Chris, Normal difficulty | Jill, other difficulties |
 | 34 placed-item locations: ammo, herbs, ink ribbons, daggers, first aid boxes | Keys and quest items (with logic that keeps the game completable) |
 | **Random weapons** option (the handgun in the main hall is shuffled too) | More locations, bonus weapons |
-| Windows; Steam Deck / Linux (app) | In-game confirmation on Steam Deck |
+| Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | — |
 
 **Required game version**: the current Steam `bhd.exe` (9,640,360 bytes, SHA-256
 `39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A`). The app checks it; on any other
@@ -301,8 +301,8 @@ The app has a **native Linux** version (no Proton needed for it); the game itsel
    automatically when it is found): the line becomes `WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%`.
 4. **Generate seed**, then start the game.
 
-> The DLL has not been confirmed in-game under Proton on a real Steam Deck yet: feedback (**Game log**
-> button) is welcome, whether it works or not.
+> **Tested and confirmed on Steam Deck**: the DLL works in game under Proton (game installed on the SD
+> card). If something goes wrong, the **Game log** button shows what happened.
 
 **Back to the original game**: in the app, **Uninstall the DLL** (on Steam Deck, also remove the launch
 option). “Remove the installed seed” only removes the seed: without a seed, the DLL changes nothing.

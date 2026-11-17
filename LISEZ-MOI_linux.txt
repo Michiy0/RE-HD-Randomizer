@@ -23,8 +23,8 @@ SUR STEAM DECK
 
 VÉRIFIER QUE ÇA MARCHE
 Après avoir ramassé un objet, le bouton « Journal du jeu » (onglet « Aider le projet »)
-doit montrer « Point d'arret pose » puis « objet remplace ». La version Linux / Proton n'a pas
-encore été confirmée sur un vrai Steam Deck : envoie ce journal, qu'il marche ou non !
+doit montrer « Point d'arret pose » puis « objet remplace ». (Testé et confirmé sur Steam Deck.)
+En cas de problème, envoie ce journal en ouvrant une « issue » sur la page GitHub du projet.
 
 REVENIR AU JEU NORMAL
 « Désinstaller la DLL » dans l'application, et retire l'option de lancement dans Steam.
