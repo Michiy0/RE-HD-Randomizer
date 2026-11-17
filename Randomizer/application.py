@@ -17,7 +17,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import generateur_seed as gen
 
-VERSION = "0.3"
+VERSION = "0.4"
 TAILLE_BHD_EXE = 9640360
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
 TITRE = f"Randomizer RE HD Remaster v{VERSION}"
@@ -617,7 +617,8 @@ class Application(tk.Tk):
         def travail():
             try:
                 ok = gen.produire(graine, self.armes.get(), self.donnees, self.dossier_seeds,
-                                  installer, self.dossier_jeu.get() or None, dire)
+                                  installer, self.dossier_jeu.get() or None, dire,
+                                  personnage=self.personnage.get(), difficulte=self.difficulte.get())
             except Exception as e:  # on affiche l'erreur plutôt que de fermer l'application
                 messages.append(f"ERREUR : {e}")
                 ok = False

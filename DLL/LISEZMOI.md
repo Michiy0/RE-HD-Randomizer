@@ -44,6 +44,9 @@ Sans effet sur le jeu ; fonctionne aussi sans seed installée.
 emplacements ; ajouter `--ecrire` (et éventuellement `--source "nom du testeur"`) pour les ajouter à
 l'onglet « Emplacements ». Lit aussi les journaux des scripts Cheat Engine. Doublons ignorés, sauvegarde
 automatique dans `sauvegardes\`.
+Options : `--personnage Chris|Jill`, `--difficulte "Très facile"|Facile|Normal|Difficile|"Real Survival"`,
+`--nouvelle-partie` (les pièces visitées en mode relevé comptent alors comme complètes dans les barres
+d'avancement du README, calculées par `Randomizer\progression.py`).
 
 ## Points à savoir
 - Ne pas lancer `appliquer_seed.lua` dans Cheat Engine en même temps : les deux utilisent le même

@@ -58,7 +58,7 @@ IDS_ARMES = {3}
 MOTIF_EMPREINTE = re.compile(r"brut \+0x10\.\.\+0x2C = ((?:[0-9A-Fa-f]{8}\s*){8})")
 
 
-def lire_emplacements(chemin):
+def lire_emplacements(chemin, personnage="Chris", difficulte="Normal"):
     wb = load_workbook(chemin, data_only=True)
     # Noms des pièces lus directement dans l'onglet « Pièces » : la colonne « Pièce » d'Emplacements est
     # une formule, dont le résultat peut manquer si le fichier a été enregistré par un autre programme.
@@ -71,8 +71,11 @@ def lire_emplacements(chemin):
     emplacements, ignores = [], []
     for ligne in ws.iter_rows(min_row=2, values_only=True):
         (_, piece, nom_piece, desc, ident, nom_obj, qte, chemin_ramassage,
-         verrou, statut, empreinte, remarque) = (list(ligne) + [None] * 12)[:12]
+         verrou, statut, empreinte, remarque, perso, diff) = (list(ligne) + [None] * 14)[:14]
         if ident is None or not piece:
+            continue
+        # seulement les relevés du scénario demandé (colonne vide = Chris / Normal, les premiers relevés)
+        if (str(perso or "Chris"), str(diff or "Normal")) != (personnage, difficulte):
             continue
         m = MOTIF_EMPREINTE.search(empreinte or "")
         fiche = {
@@ -199,7 +202,7 @@ def tirer_graine():
 
 
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
-             dire=print):
+             dire=print, personnage="Chris", difficulte="Normal"):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
     Renvoie True si tout s'est bien passé."""
     if not Path(fichier).exists():
@@ -210,14 +213,17 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     sortie_dir = Path(dossier_sortie)
     sortie_dir.mkdir(parents=True, exist_ok=True)
 
-    emplacements, ignores = lire_emplacements(fichier)
+    emplacements, ignores = lire_emplacements(fichier, personnage, difficulte)
+    if not emplacements:
+        dire(f"Aucun emplacement relevé pour {personnage} / {difficulte} : rien à mélanger.")
+        return False
     resultat = generer(emplacements, graine, ids_libres)
     verifier(resultat)
 
     sortie = {
         "version_jeu": {"taille_bhd_exe": 9640360,
                         "sha256": "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"},
-        "personnage": "Chris", "difficulte": "Normal",
+        "personnage": personnage, "difficulte": difficulte,
         "graine": graine, "options": {"armes_aleatoires": armes_aleatoires},
         "remplacements": resultat,
     }
@@ -259,13 +265,17 @@ def main():
     parser.add_argument("--armes-aleatoires", action="store_true",
                         help="mélange aussi le pistolet (Chris doit alors trouver son arme)")
     parser.add_argument("--fichier", default=FICHIER_PAR_DEFAUT, help="tableur de données")
+    parser.add_argument("--personnage", default="Chris", choices=("Chris", "Jill"))
+    parser.add_argument("--difficulte", default="Normal",
+                        choices=("Très facile", "Facile", "Normal", "Difficile", "Real Survival"))
     parser.add_argument("--installer", action="store_true",
                         help=f"copie la seed dans le dossier du jeu sous le nom {NOM_SEED_JEU}")
     parser.add_argument("--dossier-jeu", help="dossier du jeu (sinon cherché dans les bibliothèques Steam)")
     args = parser.parse_args()
 
     graine = args.graine if args.graine is not None else tirer_graine()
-    if not produire(graine, args.armes_aleatoires, args.fichier, ".", args.installer, args.dossier_jeu):
+    if not produire(graine, args.armes_aleatoires, args.fichier, ".", args.installer, args.dossier_jeu,
+                    personnage=args.personnage, difficulte=args.difficulte):
         sys.exit(1)
 
 

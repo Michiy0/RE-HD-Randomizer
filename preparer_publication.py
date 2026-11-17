@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "Randomizer"))
 from application import VERSION  # noqa: E402
+import progression  # noqa: E402
 
 ICI = Path(__file__).resolve().parent
 SORTIE = ICI / "publication"
@@ -40,6 +41,8 @@ FICHIERS = {
     "Randomizer/application.py": "Randomizer/application.py",
     "Randomizer/generateur_seed.py": "Randomizer/generateur_seed.py",
     "Randomizer/importer_journal.py": "Randomizer/importer_journal.py",
+    "Randomizer/progression.py": "Randomizer/progression.py",
+    "images/progression.svg": "images/progression.svg",
     "Randomizer/creer_icone.py": "Randomizer/creer_icone.py",
     "Randomizer/construire_exe.bat": "Randomizer/construire_exe.bat",
     "Randomizer/icone.ico": "Randomizer/icone.ico",
@@ -81,6 +84,11 @@ def construire_exe(depot):
 
 
 def main():
+    # Barres d'avancement (images/progression.svg et section du README) à jour avant la copie
+    progression.mettre_a_jour(ICI / "donnees_randomizer_RE1.xlsx", ICI / "README.md",
+                              ICI / "images" / "progression.svg")
+    print("Barres d'avancement mises à jour.")
+
     # On vide le dépôt sauf son historique git (.git), pour que les fichiers retirés de la liste
     # disparaissent aussi du dépôt.
     if DEPOT.exists():

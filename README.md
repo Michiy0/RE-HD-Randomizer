@@ -8,7 +8,7 @@ on peut donc jouer à plusieurs sur la même seed et comparer.
 > Projet de fan, **non officiel**, sans lien avec Capcom. Aucun fichier du jeu n'est inclus : il faut
 > posséder Resident Evil HD Remaster sur Steam.
 
-## État : version 0.3 (test)
+## État : version 0.4 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -23,6 +23,35 @@ Les objets non pris en charge restent à leur place d'origine : la partie reste 
 Le randomizer ne fonctionne qu'avec **une version précise** de `bhd.exe` (la version Steam actuelle) :
 9 640 360 octets, SHA-256 `39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A`.
 L'application le vérifie. Sur une autre version, le randomizer se met en veille et le jeu reste intact.
+
+## Avancement des relevés
+
+Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage et difficulté (voir [Contribuer](#contribuer--relever-des-emplacements)). Mis à jour à chaque version.
+
+<!-- progression:debut -->
+
+<img src="images/progression.svg" alt="Avancement des relevés" width="800">
+
+<details><summary>Détail (texte)</summary>
+
+| Personnage | Difficulté | Pièces complètes | Visitées (partie commencée) | Objets relevés |
+|---|---|---|---|---|
+| Chris | Très facile | 0/118 (0 %) | 0 | 0 |
+| Chris | Facile | 0/118 (0 %) | 0 | 0 |
+| Chris | Normal | 0/118 (0 %) | 26 | 73 |
+| Chris | Difficile | 0/118 (0 %) | 0 | 0 |
+| Chris | Real Survival | 0/118 (0 %) | 0 | 0 |
+| Jill | Très facile | 0/118 (0 %) | 0 | 0 |
+| Jill | Facile | 0/118 (0 %) | 0 | 0 |
+| Jill | Normal | 0/118 (0 %) | 0 | 0 |
+| Jill | Difficile | 0/118 (0 %) | 0 | 0 |
+| Jill | Real Survival | 0/118 (0 %) | 0 | 0 |
+
+Armes bonus : liste à compléter. Mis à jour le 17/11/2026.
+
+</details>
+
+<!-- progression:fin -->
 
 ## Installation (joueurs)
 
@@ -82,7 +111,9 @@ de commande `python Randomizer\generateur_seed.py 12345 --armes-aleatoires --ins
 Le plus simple : coche **Mode relevé** dans l'application, lance une **nouvelle partie** et visite les
 pièces. À chaque nouvelle pièce, les objets présents sont notés dans le journal du jeu, sans rien
 ramasser (petite saccade d'environ 0,3 s à l'entrée). Envoie ensuite ce journal (bouton **Journal du jeu**)
-dans une *issue* : `python Randomizer\importer_journal.py journal.txt --ecrire` l'ajoute au tableur.
+dans une *issue*, en précisant le personnage et la difficulté. Pour l'ajouter au tableur :
+`python Randomizer\importer_journal.py journal.txt --personnage Chris --difficulte Normal --nouvelle-partie --ecrire`
+(sans `--nouvelle-partie` si la partie était déjà commencée : les pièces comptent alors comme simplement visitées).
 
 
 Les scripts Cheat Engine de `outils/cheat_engine/` servent à relever de nouveaux objets
@@ -105,7 +136,7 @@ GPLv3 — voir [LICENSE](LICENSE).
 
 Item randomizer for **Resident Evil HD Remaster (Steam)**. Unofficial fan project; no game files included.
 
-- **Version 0.3 (test)**: Chris / Normal only, 34 placed-item locations (ammo, herbs, ink ribbons, daggers,
+- **Version 0.4 (test)**: Chris / Normal only, 34 placed-item locations (ammo, herbs, ink ribbons, daggers,
   first aid boxes), optional *random weapons*. Keys, Jill and other difficulties are planned.
 - **Requires** the current Steam `bhd.exe` (9,640,360 bytes, SHA-256 above). On any other version the
   randomizer stays inactive and the game is untouched.
