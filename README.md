@@ -8,7 +8,7 @@ on peut donc jouer à plusieurs sur la même seed et comparer.
 > Projet de fan, **non officiel**, sans lien avec Capcom. Aucun fichier du jeu n'est inclus : il faut
 > posséder Resident Evil HD Remaster sur Steam.
 
-## État : version 0.4 (test)
+## État : version 0.5 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -108,7 +108,7 @@ de commande `python Randomizer\generateur_seed.py 12345 --armes-aleatoires --ins
 
 ## Contribuer : relever des emplacements
 
-Le plus simple : coche **Mode relevé** dans l'application, lance une **nouvelle partie** et visite les
+Le plus simple : dans l'onglet **Aider le projet** de l'application, coche **Mode relevé**, lance une **nouvelle partie** et visite les
 pièces. À chaque nouvelle pièce, les objets présents sont notés dans le journal du jeu, sans rien
 ramasser (petite saccade d'environ 0,3 s à l'entrée). Envoie ensuite ce journal (bouton **Journal du jeu**)
 dans une *issue*, en précisant le personnage et la difficulté. Pour l'ajouter au tableur :
@@ -136,12 +136,12 @@ GPLv3 — voir [LICENSE](LICENSE).
 
 Item randomizer for **Resident Evil HD Remaster (Steam)**. Unofficial fan project; no game files included.
 
-- **Version 0.4 (test)**: Chris / Normal only, 34 placed-item locations (ammo, herbs, ink ribbons, daggers,
+- **Version 0.5 (test)**: Chris / Normal only, 34 placed-item locations (ammo, herbs, ink ribbons, daggers,
   first aid boxes), optional *random weapons*. Keys, Jill and other difficulties are planned.
 - **Requires** the current Steam `bhd.exe` (9,640,360 bytes, SHA-256 above). On any other version the
   randomizer stays inactive and the game is untouched.
 - **Install**: download the zip from *Releases*, run `RandomizerREHD.exe`, click *Installer la DLL*, then
-  *Générer la seed*, start a new game as Chris (Normal). The UI is in French for now.
+  *Générer la seed*, start a new game as Chris (Normal). The app is available in English, French, Japanese, Spanish, Portuguese, Russian and Chinese (language selector at the top right).
 - **Uninstall**: *Désinstaller la DLL* (or delete `xinput1_4.dll` from the game folder).
 - **Bug reports**: attach `randomizer_journal.txt` (button *Journal du jeu*) to an issue.
 - Works alongside BhdTool. Unsigned exe: SmartScreen may warn; the DLL uses a hardware breakpoint, which

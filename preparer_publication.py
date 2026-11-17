@@ -42,6 +42,7 @@ FICHIERS = {
     "Randomizer/generateur_seed.py": "Randomizer/generateur_seed.py",
     "Randomizer/importer_journal.py": "Randomizer/importer_journal.py",
     "Randomizer/progression.py": "Randomizer/progression.py",
+    "Randomizer/textes.py": "Randomizer/textes.py",
     "images/progression.svg": "images/progression.svg",
     "Randomizer/creer_icone.py": "Randomizer/creer_icone.py",
     "Randomizer/construire_exe.bat": "Randomizer/construire_exe.bat",

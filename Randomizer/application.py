@@ -11,14 +11,18 @@ import os
 import shutil
 import sys
 import threading
+import webbrowser
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 import generateur_seed as gen
+import progression
+import textes
 
-VERSION = "0.4"
+VERSION = "0.5"
 TAILLE_BHD_EXE = 9640360
+URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
 TITRE = f"Randomizer RE HD Remaster v{VERSION}"
 
@@ -198,6 +202,8 @@ def dessiner_indicateur(forme, remplissage, bord, coche=None, taille=18, marge=9
 def creer_indicateurs(racine, style):
     """Remplace les indicateurs « à l'ancienne » de clam par des cases et ronds lissés."""
     c = COULEURS
+    if getattr(racine, "_images_style", None):        # déjà créés : le thème est simplement réappliqué
+        return
     racine._images_style = images = {}
     for forme, nom_ttk, marque in (("case", "TCheckbutton", "coche"), ("rond", "TRadiobutton", "point")):
         variantes = {
@@ -287,6 +293,69 @@ def appliquer_style(racine):
                 gripcount=0, width=8)
     s.map("Mince.Vertical.TScrollbar", background=[("active", "#4a505c")],
           lightcolor=[("active", "#4a505c")], darkcolor=[("active", "#4a505c")])
+    # onglets : plats, sans pointillés de focus, l'onglet actif prend la couleur des cartes
+    s.configure("TNotebook", background=c["fond"], borderwidth=0, bordercolor=c["fond"],
+                lightcolor=c["fond"], darkcolor=c["fond"], tabmargins=(0, 0, 0, 0))
+    s.layout("TNotebook.Tab", [("Notebook.tab", {"sticky": "nswe", "children": [
+        ("Notebook.padding", {"side": "top", "sticky": "nswe", "children": [
+            ("Notebook.label", {"side": "top", "sticky": ""})]})]})])
+    s.configure("TNotebook.Tab", background=c["fond"], foreground=c["discret"], padding=(18, 9),
+                font=(POLICE, 10, "bold"), borderwidth=0, bordercolor=c["fond"], lightcolor=c["fond"],
+                darkcolor=c["fond"])
+    s.map("TNotebook.Tab", background=[("selected", c["carte"]), ("active", c["survol"])],
+          foreground=[("selected", c["texte"]), ("active", c["texte"])],
+          bordercolor=[("selected", c["bord"])], lightcolor=[("selected", c["carte"])],
+          darkcolor=[("selected", c["carte"])])
+    # liste déroulante (sélecteur de langue)
+    s.configure("TCombobox", fieldbackground=c["champ"], background=c["champ"], foreground=c["texte"],
+                arrowcolor=c["texte"], bordercolor=c["bord"], lightcolor=c["champ"], darkcolor=c["champ"],
+                padding=(8, 4))
+    s.map("TCombobox", fieldbackground=[("readonly", c["champ"])], foreground=[("readonly", c["texte"])],
+          selectbackground=[("readonly", c["champ"])], selectforeground=[("readonly", c["texte"])],
+          background=[("active", c["survol"])], bordercolor=[("focus", c["accent"])])
+    racine.option_add("*TCombobox*Listbox.background", c["champ"])
+    racine.option_add("*TCombobox*Listbox.foreground", c["texte"])
+    racine.option_add("*TCombobox*Listbox.selectBackground", c["accent"])
+    racine.option_add("*TCombobox*Listbox.selectForeground", "#ffffff")
+    racine.option_add("*TCombobox*Listbox.font", (POLICE, 10))
+
+
+def choisir_police(langue):
+    """Police de l'interface : Segoe UI, ou une police avec idéogrammes pour le japonais et le chinois."""
+    global POLICE
+    POLICE = textes.POLICES.get(langue, "Segoe UI")
+
+
+def fichier_preferences():
+    base = Path(os.environ.get("APPDATA") or Path.home())
+    return base / "RandomizerREHD" / "preferences.ini"
+
+
+def lire_langue():
+    """Préférence enregistrée : « auto » (langue de Windows) ou un code de langue. « auto » par défaut."""
+    try:
+        for ligne in fichier_preferences().read_text(encoding="utf-8").splitlines():
+            if ligne.startswith("langue="):
+                code = ligne.split("=", 1)[1].strip()
+                if code == "auto" or code in textes.LANGUES:
+                    return code
+    except OSError:
+        pass
+    return "auto"
+
+
+def langue_effective(preference):
+    """Langue réellement utilisée : la langue de Windows si « auto » (anglais si elle n'est pas proposée)."""
+    return textes.langue_systeme() if preference == "auto" else preference
+
+
+def enregistrer_langue(code):
+    try:
+        f = fichier_preferences()
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(f"langue={code}\n", encoding="utf-8")
+    except OSError:
+        pass                        # préférence perdue, sans gravité
 
 
 def barre_titre_sombre(fenetre):
@@ -307,13 +376,16 @@ class Application(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(TITRE)
-        self.minsize(720, 700)
+        self.minsize(740, 760)
         icone = trouver_ressource("icone.ico", ("",))
         if icone:
             try:
                 self.iconbitmap(default=str(icone))   # barre de titre et barre des tâches
             except tk.TclError:
                 pass
+        self.preference_langue = lire_langue()                 # « auto » ou un code de langue
+        self.langue = tk.StringVar(value=langue_effective(self.preference_langue))
+        choisir_police(self.langue.get())
         appliquer_style(self)
         self.donnees = trouver_ressource(gen.FICHIER_PAR_DEFAUT)
         self.dll = trouver_ressource("xinput1_4.dll")
@@ -328,13 +400,19 @@ class Application(tk.Tk):
         self.installer = tk.BooleanVar(value=True)
         self.afficher_spoiler = tk.BooleanVar(value=False)
         self.releve = tk.BooleanVar(value=False)
-        self.etat_jeu = tk.StringVar()
+        self.etat_jeu = tk.StringVar()             # résumé texte de l'état (utilisé par les tests)
         self.dossier_seeds = dossier_programme() / "seeds"
+        self.dernier_resultat = None               # (messages, spoiler, ok) de la dernière génération
 
         self.construire()
         self.dossier_jeu.trace_add("write", lambda *_: self.actualiser_etat())
         self.actualiser_etat()
+        self.afficher_resultat()
         barre_titre_sombre(self)
+
+    def t(self, cle, **valeurs):
+        """Texte dans la langue choisie."""
+        return textes.tr(cle, self.langue.get(), **valeurs)
 
     # ------------------------------------------------------------------ interface
     def carte(self, parent, titre):
@@ -345,104 +423,148 @@ class Application(tk.Tk):
         interieur.pack(fill="both", expand=True)
         return cadre, interieur
 
-    def construire(self):
-        cadre = ttk.Frame(self, padding=(20, 16, 20, 20))
-        cadre.pack(fill="both", expand=True)
-        cadre.columnconfigure(0, weight=1, uniform="col")
-        cadre.columnconfigure(1, weight=1, uniform="col")
+    def police_texte(self):
+        """Police des zones de texte : Consolas (latin, cyrillique) ou la police de la langue."""
+        return ("Consolas", 10) if self.langue.get() not in textes.POLICES else (POLICE, 10)
 
-        entete = ttk.Frame(cadre)
-        entete.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 14))
+    def construire(self):
+        self.racine = racine = ttk.Frame(self, padding=(20, 16, 20, 20))
+        racine.pack(fill="both", expand=True)
+
+        entete = ttk.Frame(racine)
+        entete.pack(fill="x", pady=(0, 12))
         ttk.Label(entete, text="Randomizer", style="Titre.TLabel").pack(side="left")
         ttk.Label(entete, text=f"Resident Evil HD Remaster  ·  v{VERSION}",
                   style="SousTitre.TLabel").pack(side="left", padx=(12, 0), pady=(10, 0))
+        # sélecteur de langue, en haut à droite
+        auto = f"{self.t('langue_auto')} ({textes.LANGUES[textes.langue_systeme()]})"
+        noms = [auto] + list(textes.LANGUES.values())
+        self.choix_langue = ttk.Combobox(entete, values=noms, state="readonly", font=(POLICE, 10),
+                                         width=max(12, len(auto) + 2))
+        self.choix_langue.set(auto if self.preference_langue == "auto" else textes.LANGUES[self.langue.get()])
+        self.choix_langue.pack(side="right", pady=(8, 0))
+        self.choix_langue.bind("<<ComboboxSelected>>", lambda _: self.changer_langue())
+        ttk.Label(entete, text="🌐", style="SousTitre.TLabel").pack(side="right", padx=(0, 6), pady=(8, 0))
 
-        # --- Partie
-        partie, p = self.carte(cadre, "Partie")
-        partie.grid(row=1, column=0, sticky="nsew", padx=(0, 8))
-        p.columnconfigure(1, weight=1)
-        ttk.Label(p, text="Personnage", style="Carte.TLabel").grid(row=0, column=0, sticky="w")
-        for i, (nom, dispo) in enumerate((("Chris", True), ("Jill  · à venir", False))):
-            ttk.Radiobutton(p, text=nom, value=nom.split()[0], variable=self.personnage,
-                            state="normal" if dispo else "disabled").grid(row=1 + i, column=0, sticky="w")
-        ttk.Label(p, text="Difficulté", style="Carte.TLabel").grid(row=0, column=1, sticky="w", padx=(24, 0))
-        for i, nom in enumerate(("Très facile", "Facile", "Normal", "Difficile", "Real Survival")):
-            dispo = nom == "Normal"
-            ttk.Radiobutton(p, text=nom if dispo else f"{nom}  · à venir", value=nom,
-                            variable=self.difficulte, state="normal" if dispo else "disabled"
-                            ).grid(row=1 + i, column=1, sticky="w", padx=(24, 0))
+        self.onglets = ttk.Notebook(racine)
+        self.onglets.pack(fill="both", expand=True)
+        page_jeu = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        page_spoiler = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        page_aide = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        self.onglets.add(page_jeu, text=self.t("onglet_randomizer"))
+        self.onglets.add(page_spoiler, text=self.t("onglet_spoiler"))
+        self.onglets.add(page_aide, text=self.t("onglet_aide"))
+        self.construire_randomizer(page_jeu)
+        self.construire_spoiler(page_spoiler)
+        self.construire_aide(page_aide)
 
-        # --- Options
-        options, o = self.carte(cadre, "Options")
-        options.grid(row=1, column=1, sticky="nsew", padx=(8, 0))
-        ttk.Checkbutton(o, text="Armes aléatoires", variable=self.armes).pack(anchor="w")
-        ttk.Label(o, text="Le pistolet du hall est mélangé lui aussi.",
-                  style="Note.TLabel").pack(anchor="w", padx=(26, 0))
-        ttk.Checkbutton(o, text="Clés aléatoires  · à venir", variable=self.cles,
-                        state="disabled").pack(anchor="w", pady=(6, 0))
-        ttk.Label(o, text="Graine", style="Carte.TLabel").pack(anchor="w", pady=(14, 4))
-        ligne = ttk.Frame(o, style="Carte.TFrame", borderwidth=0)
-        ligne.pack(anchor="w", fill="x")
-        ttk.Entry(ligne, textvariable=self.graine, width=14, font=(POLICE, 11)).pack(side="left")
-        ttk.Button(ligne, text="Au hasard",
-                   command=lambda: self.graine.set(str(gen.tirer_graine()))).pack(side="left", padx=(8, 0))
-        ttk.Label(o, text="Même graine + mêmes options = même résultat.",
-                  style="Note.TLabel").pack(anchor="w", pady=(6, 0))
+        if not self.donnees:
+            self.ecrire(self.t("donnees_absentes", fichier=gen.FICHIER_PAR_DEFAUT))
+            self.bouton_generer.state(["disabled"])
+        else:
+            self.ecrire(self.t("pret"))
 
-        # --- Jeu
-        jeu, j = self.carte(cadre, "Jeu")
-        jeu.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(16, 0))
+    def changer_langue(self):
+        i = self.choix_langue.current()            # 0 = automatique, puis les langues dans l'ordre
+        preference = "auto" if i <= 0 else textes.ORDRE[i - 1]
+        code = langue_effective(preference)
+        if preference == self.preference_langue and code == self.langue.get():
+            return
+        onglet = self.onglets.index("current")
+        self.preference_langue = preference
+        self.langue.set(code)
+        enregistrer_langue(preference)
+        choisir_police(code)
+        appliquer_style(self)                       # polices du thème dans la nouvelle langue
+        self.racine.destroy()                       # on reconstruit la fenêtre : les choix sont gardés
+        self.construire()
+        self.onglets.select(onglet)
+        self.actualiser_etat()
+        self.afficher_resultat()
+
+    # --- onglet « Randomizer » : de quoi jouer, dans l'ordre (DLL, puis options, puis génération)
+    def construire_randomizer(self, cadre):
+        cadre.columnconfigure(0, weight=1, uniform="col")
+        cadre.columnconfigure(1, weight=1, uniform="col")
+
+        # --- Jeu (en premier : on installe la DLL avant de générer une seed)
+        jeu, j = self.carte(cadre, self.t("carte_jeu"))
+        jeu.grid(row=0, column=0, columnspan=2, sticky="nsew")
         j.columnconfigure(0, weight=1)
         ttk.Entry(j, textvariable=self.dossier_jeu).grid(row=0, column=0, sticky="ew")
-        ttk.Button(j, text="Parcourir…", command=self.choisir_dossier).grid(row=0, column=1, padx=(8, 0))
+        ttk.Button(j, text=self.t("parcourir"), command=self.choisir_dossier).grid(row=0, column=1, padx=(8, 0))
         etats = ttk.Frame(j, style="Carte.TFrame", borderwidth=0)
         etats.grid(row=1, column=0, columnspan=2, sticky="w", pady=(10, 0))
         self.badge_dll = ttk.Label(etats, style="Neutre.TLabel")
         self.badge_dll.pack(side="left")
         self.badge_seed = ttk.Label(etats, style="Neutre.TLabel")
         self.badge_seed.pack(side="left", padx=(24, 0))
-        self.badge_version = ttk.Label(j, style="Alerte.TLabel")
-        self.badge_version.grid(row=5, column=0, columnspan=2, sticky="w")
+        self.badge_version = ttk.Label(j, style="Alerte.TLabel", wraplength=640, justify="left")
+        self.badge_version.grid(row=2, column=0, columnspan=2, sticky="w")
         gestion = ttk.Frame(j, style="Carte.TFrame", borderwidth=0)
-        gestion.grid(row=2, column=0, columnspan=2, sticky="w", pady=(10, 0))
-        self.bouton_dll = ttk.Button(gestion, text="Installer la DLL", command=self.installer_dll)
+        gestion.grid(row=3, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        self.bouton_dll = ttk.Button(gestion, text=self.t("installer_dll"), command=self.installer_dll)
         self.bouton_dll.pack(side="left")
-        self.bouton_retirer_dll = ttk.Button(gestion, text="Désinstaller la DLL", style="Danger.TButton",
+        self.bouton_retirer_dll = ttk.Button(gestion, text=self.t("desinstaller_dll"), style="Danger.TButton",
                                              command=self.retirer_dll)
         self.bouton_retirer_dll.pack(side="left", padx=8)
-        self.bouton_retirer_seed = ttk.Button(gestion, text="Supprimer la seed installée",
+        self.bouton_retirer_seed = ttk.Button(gestion, text=self.t("supprimer_seed"),
                                               style="Danger.TButton", command=self.retirer_seed)
         self.bouton_retirer_seed.pack(side="left")
-        ttk.Label(j, text="Désinstaller la DLL suffit pour retrouver le jeu d'origine.",
-                  style="Note.TLabel").grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
-        ttk.Checkbutton(j, text="Installer la seed dans le jeu après génération",
-                        variable=self.installer).grid(row=4, column=0, sticky="w", pady=(8, 0))
-        self.case_releve = ttk.Checkbutton(j, text="Mode relevé : noter les objets des pièces visitées "
-                                                   "(aide au projet)",
-                                           variable=self.releve, command=self.basculer_releve)
-        self.case_releve.grid(row=6, column=0, columnspan=2, sticky="w", pady=(2, 0))
-        ttk.Label(j, text="Petite saccade (~0,3 s) en entrant dans une pièce. Idéal en nouvelle partie ; "
-                          "envoie ensuite le journal du jeu.",
-                  style="Note.TLabel").grid(row=7, column=0, columnspan=2, sticky="w", padx=(27, 0))
+        ttk.Label(j, text=self.t("note_desinstaller"),
+                  style="Note.TLabel").grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
+
+        # --- Partie
+        partie, p = self.carte(cadre, self.t("carte_partie"))
+        partie.grid(row=1, column=0, sticky="nsew", padx=(0, 8), pady=(16, 0))
+        p.columnconfigure(1, weight=1)
+        a_venir = f"  · {self.t('a_venir')}"
+        ttk.Label(p, text=self.t("personnage"), style="Carte.TLabel").grid(row=0, column=0, sticky="w")
+        for i, (nom, dispo) in enumerate((("Chris", True), ("Jill", False))):
+            ttk.Radiobutton(p, text=nom if dispo else nom + a_venir, value=nom, variable=self.personnage,
+                            state="normal" if dispo else "disabled").grid(row=1 + i, column=0, sticky="w")
+        ttk.Label(p, text=self.t("difficulte"), style="Carte.TLabel").grid(row=0, column=1, sticky="w",
+                                                                         padx=(24, 0))
+        for i, nom in enumerate(("Très facile", "Facile", "Normal", "Difficile", "Real Survival")):
+            dispo = nom == "Normal"
+            libelle = self.t(f"diff_{nom}")
+            ttk.Radiobutton(p, text=libelle if dispo else libelle + a_venir, value=nom,
+                            variable=self.difficulte, state="normal" if dispo else "disabled"
+                            ).grid(row=1 + i, column=1, sticky="w", padx=(24, 0))
+
+        # --- Options
+        options, o = self.carte(cadre, self.t("carte_options"))
+        options.grid(row=1, column=1, sticky="nsew", padx=(8, 0), pady=(16, 0))
+        ttk.Checkbutton(o, text=self.t("armes_aleatoires"), variable=self.armes).pack(anchor="w")
+        ttk.Label(o, text=self.t("note_armes"), style="Note.TLabel", wraplength=280,
+                  justify="left").pack(anchor="w", padx=(27, 0))
+        ttk.Checkbutton(o, text=self.t("cles_aleatoires") + a_venir, variable=self.cles,
+                        state="disabled").pack(anchor="w", pady=(6, 0))
+        ttk.Label(o, text=self.t("graine"), style="Carte.TLabel").pack(anchor="w", pady=(14, 4))
+        ligne = ttk.Frame(o, style="Carte.TFrame", borderwidth=0)
+        ligne.pack(anchor="w", fill="x")
+        ttk.Entry(ligne, textvariable=self.graine, width=14, font=(POLICE, 11)).pack(side="left")
+        ttk.Button(ligne, text=self.t("au_hasard"),
+                   command=lambda: self.graine.set(str(gen.tirer_graine()))).pack(side="left", padx=(8, 0))
+        ttk.Label(o, text=self.t("note_graine"), style="Note.TLabel", wraplength=280,
+                  justify="left").pack(anchor="w", pady=(6, 0))
 
         # --- Actions
         boutons = ttk.Frame(cadre)
-        boutons.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(18, 0))
-        self.bouton_generer = ttk.Button(boutons, text="Générer la seed", style="Accent.TButton",
+        boutons.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(18, 0))
+        self.bouton_generer = ttk.Button(boutons, text=self.t("generer"), style="Accent.TButton",
                                          command=self.generer)
         self.bouton_generer.pack(side="left")
-        ttk.Button(boutons, text="Dossier des seeds",
-                   command=self.ouvrir_seeds).pack(side="left", padx=(10, 0))
-        ttk.Button(boutons, text="Journal du jeu",
-                   command=self.ouvrir_journal).pack(side="left", padx=(8, 0))
-        ttk.Checkbutton(boutons, text="Afficher le spoiler", style="Fond.TCheckbutton",
-                        variable=self.afficher_spoiler).pack(side="right")
+        ttk.Checkbutton(boutons, text=self.t("installer_seed_case"), style="Fond.TCheckbutton",
+                        variable=self.installer).pack(side="left", padx=(16, 0))
+        ttk.Button(boutons, text=self.t("dossier_seeds"),
+                   command=self.ouvrir_seeds).pack(side="right")
 
-        # --- Journal
+        # --- Journal de l'application
         zone = tk.Frame(cadre, bg=COULEURS["bord"], padx=1, pady=1)
-        zone.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
-        cadre.rowconfigure(4, weight=1)
-        self.journal = tk.Text(zone, width=1, height=10, wrap="word", state="disabled", font=("Consolas", 10),
+        zone.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
+        cadre.rowconfigure(3, weight=1)
+        self.journal = tk.Text(zone, width=1, height=7, wrap="word", state="disabled", font=self.police_texte(),
                                bg=COULEURS["journal"], fg=COULEURS["texte"], insertbackground=COULEURS["texte"],
                                selectbackground=COULEURS["accent"], relief="flat", borderwidth=0,
                                padx=12, pady=10, highlightthickness=0)
@@ -452,11 +574,129 @@ class Application(tk.Tk):
         defil.pack(side="right", fill="y")
         self.journal.pack(side="left", fill="both", expand=True)
 
-        if not self.donnees:
-            self.ecrire(f"Fichier de données {gen.FICHIER_PAR_DEFAUT} introuvable : génération impossible.")
-            self.bouton_generer.state(["disabled"])
+    # --- onglet « Spoiler » : la liste complète des changements, cachée tant qu'on ne coche pas
+    def construire_spoiler(self, cadre):
+        cadre.columnconfigure(0, weight=1)
+        cadre.rowconfigure(0, weight=1)
+        carte, s = self.carte(cadre, self.t("carte_spoiler"))
+        carte.grid(row=0, column=0, sticky="nsew")
+        ttk.Checkbutton(s, text=self.t("afficher_spoiler"), variable=self.afficher_spoiler,
+                        command=self.afficher_resultat).pack(anchor="w")
+        self.note_spoiler = ttk.Label(s, style="Note.TLabel", wraplength=660, justify="left")
+        self.note_spoiler.pack(anchor="w", padx=(27, 0), pady=(2, 10))
+        zone = tk.Frame(s, bg=COULEURS["bord"], padx=1, pady=1)
+        zone.pack(fill="both", expand=True)
+        self.zone_spoiler = tk.Text(zone, width=1, height=10, wrap="word", state="disabled",
+                                    font=self.police_texte(), bg=COULEURS["journal"], fg=COULEURS["texte"],
+                                    selectbackground=COULEURS["accent"], relief="flat", borderwidth=0,
+                                    padx=12, pady=10, highlightthickness=0)
+        defil = ttk.Scrollbar(zone, orient="vertical", style="Mince.Vertical.TScrollbar",
+                              command=self.zone_spoiler.yview)
+        self.zone_spoiler.configure(yscrollcommand=defil.set)
+        defil.pack(side="right", fill="y")
+        self.zone_spoiler.pack(side="left", fill="both", expand=True)
+
+    def spoiler_actuel(self):
+        """(titre, texte) du spoiler : dernière seed générée, sinon celle installée dans le jeu."""
+        if self.dernier_resultat and self.dernier_resultat[1]:
+            return self.t("spoiler_genere"), self.dernier_resultat[1]
+        dossier = self.dossier_jeu.get()
+        seed = gen.seed_installee(dossier) if dossier and Path(dossier).exists() else None
+        if seed:
+            fichier = self.dossier_seeds / f"seed_{seed[0]}{'_armes' if seed[1] else ''}_spoiler.txt"
+            if fichier.exists():
+                return self.t("spoiler_installe"), fichier.read_text(encoding="utf-8")
+        return None, None
+
+    # --- onglet « Aider le projet » : mode relevé et avancement des relevés
+    def construire_aide(self, cadre):
+        cadre.columnconfigure(0, weight=1)
+
+        releve, r = self.carte(cadre, self.t("carte_releve"))
+        releve.grid(row=0, column=0, sticky="nsew")
+        ttk.Label(r, text=self.t("releve_intro"), style="Carte.TLabel", wraplength=640, justify="left"
+                  ).pack(anchor="w", fill="x")
+        self.case_releve = ttk.Checkbutton(r, text=self.t("releve_case"),
+                                           variable=self.releve, command=self.basculer_releve)
+        self.case_releve.pack(anchor="w", pady=(10, 2))
+        for etape in ("etape1", "etape2", "etape3", "etape4"):
+            ttk.Label(r, text=self.t(etape), style="Note.TLabel", wraplength=610,
+                      justify="left").pack(anchor="w", padx=(27, 0), pady=1)
+        ttk.Label(r, text=self.t("releve_saccade"), style="Note.TLabel", wraplength=610,
+                  justify="left").pack(anchor="w", padx=(27, 0), pady=(6, 0))
+        liens = ttk.Frame(r, style="Carte.TFrame", borderwidth=0)
+        liens.pack(anchor="w", pady=(12, 0))
+        ttk.Button(liens, text=self.t("journal_du_jeu"), command=self.ouvrir_journal).pack(side="left")
+        ttk.Button(liens, text=self.t("signaler_github"),
+                   command=lambda: webbrowser.open(URL_DEPOT + "/issues")).pack(side="left", padx=(8, 0))
+
+        avancement, a = self.carte(cadre, self.t("carte_avancement"))
+        avancement.grid(row=1, column=0, sticky="nsew", pady=(16, 0))
+        cadre.rowconfigure(1, weight=1)
+        self.toile = tk.Canvas(a, bg=COULEURS["carte"], highlightthickness=0, height=330)
+        self.toile.pack(fill="both", expand=True)
+        self.note_avancement = ttk.Label(a, style="Note.TLabel", wraplength=660, justify="left")
+        self.note_avancement.pack(anchor="w", pady=(6, 0))
+        self.avancement = None
+        if self.donnees:
+            try:
+                self.avancement = progression.calculer(self.donnees)
+            except Exception as e:  # données illisibles : on l'affiche sans bloquer l'application
+                self.note_avancement.configure(text=self.t("avancement_indispo", e=e))
+        self.toile.bind("<Configure>", lambda _: self.dessiner_avancement())
+
+    def dessiner_avancement(self):
+        """Mêmes barres que sur la page GitHub (calculées par progression.py)."""
+        c, t = COULEURS, self.toile
+        t.delete("all")
+        res = self.avancement
+        if not res:
+            return
+        largeur = max(t.winfo_width(), 400)
+        x_perso, x_diff, x_barre = 0, 56, 196
+        x_pct = largeur - 210
+        l_barre = max(x_pct - x_barre - 18, 60)
+        total = res["total_pieces"] or 1
+        y = 12
+
+        def barre(y, plein, pale):
+            t.create_rectangle(x_barre, y - 5, x_barre + l_barre, y + 5, fill=c["champ"], outline="")
+            if pale > 0:
+                t.create_rectangle(x_barre, y - 5, x_barre + max(round(l_barre * (plein + pale)), 4), y + 5,
+                                   fill="#5a2a2e", outline="")
+            if plein > 0:
+                t.create_rectangle(x_barre, y - 5, x_barre + max(round(l_barre * plein), 4), y + 5,
+                                   fill=c["accent"], outline="")
+
+        precedent = None
+        for (perso, diff), s in res["scenarios"].items():
+            if precedent and perso != precedent:
+                t.create_line(0, y - 13, largeur, y - 13, fill=c["bord"])
+            if perso != precedent:
+                t.create_text(x_perso, y, text=perso, anchor="w", fill=c["texte"], font=(POLICE, 10, "bold"))
+            precedent = perso
+            t.create_text(x_diff, y, text=self.t(f"diff_{diff}"), anchor="w", fill=c["texte"], font=(POLICE, 10))
+            barre(y, s["completes"] / total, s["visitees"] / total)
+            t.create_text(x_pct, y, text=f"{round(100 * s['completes'] / total)} %", anchor="w",
+                          fill=c["texte"], font=(POLICE, 10, "bold"))
+            detail = f"{s['completes']}/{res['total_pieces']}"
+            if s["visitees"]:
+                detail += self.t("visitees", n=s["visitees"])
+            t.create_text(x_pct + 44, y, text=detail, anchor="w", fill=c["discret"], font=(POLICE, 9))
+            y += 26
+        t.create_line(0, y - 13, largeur, y - 13, fill=c["bord"])
+        y += 6
+        t.create_text(x_perso, y, text=self.t("armes_bonus"), anchor="w", fill=c["texte"],
+                      font=(POLICE, 10, "bold"))
+        if res["bonus_total"]:
+            barre(y, res["bonus_connus"] / res["bonus_total"], 0)
+            t.create_text(x_pct, y, text=self.t("bonus_identifiees", a=res["bonus_connus"], b=res["bonus_total"]),
+                          anchor="w", fill=c["texte"], font=(POLICE, 10, "bold"))
         else:
-            self.ecrire("Prêt. Choisis tes options puis « Générer la seed ».")
+            barre(y, 0, 0)
+            t.create_text(x_pct, y, text=self.t("liste_a_completer"), anchor="w", fill=c["discret"],
+                          font=(POLICE, 9))
+        self.note_avancement.configure(text=self.t("note_avancement", total=res["total_pieces"], version=VERSION))
 
     # ------------------------------------------------------------------ actions
     def ecrire(self, texte, effacer=False):
@@ -468,8 +708,7 @@ class Application(tk.Tk):
         self.journal.configure(state="disabled")
 
     def choisir_dossier(self):
-        d = filedialog.askdirectory(title="Dossier du jeu (celui qui contient bhd.exe)",
-                                    initialdir=self.dossier_jeu.get() or None)
+        d = filedialog.askdirectory(title=self.t("choisir_dossier"), initialdir=self.dossier_jeu.get() or None)
         if d:
             self.dossier_jeu.set(str(Path(d)))
 
@@ -477,8 +716,7 @@ class Application(tk.Tk):
         d = Path(self.dossier_jeu.get()) if self.dossier_jeu.get() else None
         if not d or not (d / "bhd.exe").exists():
             self.etat_jeu.set("Jeu introuvable : indique le dossier qui contient bhd.exe.")
-            self.badge_dll.configure(text="●  Jeu introuvable : indique le dossier qui contient bhd.exe",
-                                     style="Alerte.TLabel")
+            self.badge_dll.configure(text=self.t("badge_jeu_introuvable"), style="Alerte.TLabel")
             self.badge_seed.configure(text="")
             self.badge_version.configure(text="")
             for b in (self.bouton_dll, self.bouton_retirer_dll, self.bouton_retirer_seed, self.case_releve):
@@ -491,24 +729,25 @@ class Application(tk.Tk):
         etranger = dll_ok and not est_notre_dll(dll)
         seed = gen.seed_installee(d)
         if etranger:
-            self.badge_dll.configure(text="●  Un autre xinput1_4.dll est présent", style="Alerte.TLabel")
+            self.badge_dll.configure(text=self.t("badge_autre_dll"), style="Alerte.TLabel")
         elif dll_ok:
-            self.badge_dll.configure(text="●  Randomizer installé", style="Ok.TLabel")
+            self.badge_dll.configure(text=self.t("badge_installe"), style="Ok.TLabel")
         else:
-            self.badge_dll.configure(text="●  Jeu d'origine (DLL non installée)", style="Neutre.TLabel")
-        self.badge_version.configure(
-            text="" if version_jeu_ok(d) else
-            "●  Version de bhd.exe non prise en charge : le randomizer restera inactif (jeu inchangé).")
+            self.badge_dll.configure(text=self.t("badge_origine"), style="Neutre.TLabel")
+        self.badge_version.configure(text="" if version_jeu_ok(d) else self.t("badge_version"))
         if seed:
-            self.badge_seed.configure(text=f"●  Seed {seed[0]}{' · armes' if seed[1] else ''}", style="Ok.TLabel")
+            self.badge_seed.configure(text=self.t("badge_seed", graine=seed[0],
+                                                  armes=self.t("badge_armes") if seed[1] else ""),
+                                      style="Ok.TLabel")
         else:
-            self.badge_seed.configure(text="●  Aucune seed installée", style="Neutre.TLabel")
+            self.badge_seed.configure(text=self.t("badge_aucune_seed"), style="Neutre.TLabel")
+        # résumé texte (non affiché, gardé en français pour les tests)
         self.etat_jeu.set(
             "DLL du randomizer : " + ("installée" if dll_ok and not etranger else
                                       "un AUTRE xinput1_4.dll est présent (pas celui du randomizer)"
                                       if etranger else "NON installée (jeu d'origine)") + "\n"
             f"Seed installée : {f'{seed[0]}' + (' (armes)' if seed[1] else '') if seed else 'aucune'}")
-        self.bouton_dll.configure(text="Mettre à jour la DLL" if dll_ok and not etranger else "Installer la DLL")
+        self.bouton_dll.configure(text=self.t("maj_dll") if dll_ok and not etranger else self.t("installer_dll"))
         self.bouton_dll.state(["!disabled"] if self.dll and not etranger else ["disabled"])
         self.bouton_retirer_dll.state(["!disabled"] if dll_ok and not etranger else ["disabled"])
         self.bouton_retirer_seed.state(["!disabled"] if seed else ["disabled"])
@@ -519,62 +758,52 @@ class Application(tk.Tk):
         try:
             ecrire_option_ini(d, "Releve", "1" if actif else None)
         except OSError as e:
-            messagebox.showerror(TITRE, f"Impossible de modifier randomizer.ini :\n{e}")
+            messagebox.showerror(TITRE, self.t("err_ini", e=e))
             self.releve.set(not actif)
             return
         if actif:
-            self.ecrire("Mode relevé activé (au prochain lancement du jeu). À chaque nouvelle pièce, les objets "
-                        "présents sont notés dans le journal du jeu (lignes « Releve auto »)."
-                        + ("" if (d / "xinput1_4.dll").exists() else
-                           "\nAttention : la DLL n'est pas installée, clique « Installer la DLL »."), effacer=True)
+            self.ecrire(self.t("releve_active")
+                        + ("" if (d / "xinput1_4.dll").exists() else self.t("releve_dll_absente")), effacer=True)
         else:
-            self.ecrire("Mode relevé désactivé (au prochain lancement du jeu).", effacer=True)
+            self.ecrire(self.t("releve_desactive"), effacer=True)
 
-    def supprimer(self, fichier, quoi):
+    def supprimer(self, fichier, cle_message):
         try:
             fichier.unlink()
-            self.ecrire(f"{quoi} supprimée : {fichier}", effacer=True)
+            self.ecrire(self.t(cle_message, chemin=fichier), effacer=True)
         except FileNotFoundError:
             pass
         except OSError as e:
-            messagebox.showerror(TITRE, f"Impossible de supprimer {fichier.name} :\n{e}\n\n"
-                                        "Le jeu est-il encore lancé ? Ferme-le puis réessaie.")
+            messagebox.showerror(TITRE, self.t("err_supprimer", nom=fichier.name, e=e))
         self.actualiser_etat()
 
     def retirer_dll(self):
         dll = Path(self.dossier_jeu.get()) / "xinput1_4.dll"
         if not est_notre_dll(dll):        # sécurité : ne jamais supprimer la DLL d'un autre mod
-            messagebox.showwarning(TITRE, "Ce xinput1_4.dll n'est pas celui du randomizer : il n'est pas supprimé.")
+            messagebox.showwarning(TITRE, self.t("pas_notre_dll"))
             self.actualiser_etat()
             return
-        if messagebox.askyesno(TITRE, "Désinstaller la DLL du randomizer ?\n\n"
-                                      "Le jeu redeviendra le jeu d'origine au prochain lancement. "
-                                      "La seed installée est conservée (elle ne sert plus à rien sans la DLL)."):
-            self.supprimer(dll, "DLL du randomizer")
+        if messagebox.askyesno(TITRE, self.t("confirmer_desinstaller")):
+            self.supprimer(dll, "dll_supprimee")
             if not dll.exists():
-                self.ecrire("Le jeu se lancera sans randomizer. Pour le remettre : « Installer la DLL ».")
+                self.ecrire(self.t("sans_randomizer"))
 
     def retirer_seed(self):
         cible = Path(self.dossier_jeu.get()) / gen.NOM_SEED_JEU
         seed = gen.seed_installee(cible.parent)
-        if seed and messagebox.askyesno(TITRE, f"Supprimer la seed installée ({seed[0]}"
-                                               f"{' avec armes' if seed[1] else ''}) ?\n\n"
-                                               "Ses fichiers restent dans le dossier des seeds. "
-                                               "Sans seed, la DLL laisse le jeu tel quel."):
-            self.supprimer(cible, "Seed installée")
+        if seed and messagebox.askyesno(TITRE, self.t("confirmer_supprimer_seed", graine=seed[0],
+                                                      armes=self.t("avec_armes") if seed[1] else "")):
+            self.supprimer(cible, "seed_supprimee")
 
     def installer_dll(self):
         cible = Path(self.dossier_jeu.get()) / "xinput1_4.dll"
-        if not version_jeu_ok(cible.parent) and not messagebox.askyesno(
-                TITRE, "Ta version de bhd.exe n'est pas celle prise en charge.\n\n"
-                       "La DLL restera inactive (le jeu ne sera pas modifié). L'installer quand même ?"):
+        if not version_jeu_ok(cible.parent) and not messagebox.askyesno(TITRE, self.t("version_confirmer")):
             return
         try:
             shutil.copyfile(self.dll, cible)
-            self.ecrire(f"DLL installée : {cible}\nPour désinstaller : supprimer ce fichier.")
+            self.ecrire(self.t("dll_installee", chemin=cible))
         except OSError as e:
-            messagebox.showerror(TITRE, f"Impossible de copier la DLL :\n{e}\n\n"
-                                        "Le jeu est-il encore lancé ?")
+            messagebox.showerror(TITRE, self.t("err_copier_dll", e=e))
         self.actualiser_etat()
 
     def ouvrir_journal(self):
@@ -582,8 +811,7 @@ class Application(tk.Tk):
         if journal.exists():
             os.startfile(journal)
         else:
-            messagebox.showinfo(TITRE, "Pas encore de journal : il se crée au premier lancement du jeu "
-                                       "avec la DLL installée.")
+            messagebox.showinfo(TITRE, self.t("pas_de_journal"))
 
     def ouvrir_seeds(self):
         self.dossier_seeds.mkdir(parents=True, exist_ok=True)
@@ -595,44 +823,61 @@ class Application(tk.Tk):
             if graine < 0:
                 raise ValueError
         except ValueError:
-            messagebox.showwarning(TITRE, "La graine doit être un nombre entier positif.")
+            messagebox.showwarning(TITRE, self.t("graine_invalide"))
             return
         installer = self.installer.get()
         if installer and not (Path(self.dossier_jeu.get()) / "bhd.exe").exists():
-            messagebox.showwarning(TITRE, "Dossier du jeu introuvable : choisis-le, ou décoche l'installation.")
+            messagebox.showwarning(TITRE, self.t("dossier_introuvable"))
             return
 
         self.bouton_generer.state(["disabled"])
-        self.ecrire("Génération…", effacer=True)
-        afficher = self.afficher_spoiler.get()
-        messages = []
-
-        def dire(texte):
-            # Le premier message est le spoiler complet : sans « Afficher le spoiler », on n'en garde
-            # que le résumé (deux premières lignes).
-            if not messages and not afficher:
-                texte = "\n".join(texte.splitlines()[:2]) + "\n(spoiler masqué : voir le fichier _spoiler.txt)"
-            messages.append(texte)
+        self.ecrire(self.t("generation"), effacer=True)
+        messages, spoiler = [], []
+        langue = self.langue.get()
 
         def travail():
             try:
                 ok = gen.produire(graine, self.armes.get(), self.donnees, self.dossier_seeds,
-                                  installer, self.dossier_jeu.get() or None, dire,
-                                  personnage=self.personnage.get(), difficulte=self.difficulte.get())
+                                  installer, self.dossier_jeu.get() or None, messages.append,
+                                  personnage=self.personnage.get(), difficulte=self.difficulte.get(),
+                                  langue=langue, dire_spoiler=spoiler.append)
             except Exception as e:  # on affiche l'erreur plutôt que de fermer l'application
-                messages.append(f"ERREUR : {e}")
+                messages.append(textes.tr("erreur", langue, e=e))
                 ok = False
-            self.after(0, lambda: self.fin_generation(messages, ok))
+            self.after(0, lambda: self.fin_generation(messages, spoiler[0] if spoiler else None, ok))
 
         threading.Thread(target=travail, daemon=True).start()
 
-    def fin_generation(self, messages, ok):
-        self.ecrire("\n".join(messages), effacer=True)
-        if not ok:
-            self.ecrire("\nLa génération ou l'installation a échoué.")
+    def fin_generation(self, messages, spoiler, ok):
+        self.dernier_resultat = (messages, spoiler, ok)
+        self.afficher_resultat()
         self.bouton_generer.state(["!disabled"])
         self.actualiser_etat()
 
+    def afficher_resultat(self):
+        """Journal de l'onglet Randomizer : résumé seulement (deux premières lignes du spoiler).
+        Onglet Spoiler : liste complète, si la case est cochée."""
+        if self.dernier_resultat:
+            messages, spoiler, ok = self.dernier_resultat
+            lignes = []
+            if spoiler:
+                lignes.append("\n".join(spoiler.splitlines()[:2]) + "\n" + self.t("renvoi_spoiler"))
+            lignes += messages
+            self.ecrire("\n".join(lignes), effacer=True)
+            if not ok:
+                self.ecrire("\n" + self.t("echec_generation"))
+        titre, texte = self.spoiler_actuel()
+        if texte is None:
+            note, contenu = self.t("spoiler_aucun"), ""
+        elif self.afficher_spoiler.get():
+            note, contenu = titre, texte
+        else:
+            note, contenu = self.t("spoiler_masque", titre=titre), ""
+        self.note_spoiler.configure(text=note)
+        self.zone_spoiler.configure(state="normal")
+        self.zone_spoiler.delete("1.0", "end")
+        self.zone_spoiler.insert("end", contenu)
+        self.zone_spoiler.configure(state="disabled")
 
 if __name__ == "__main__":
     Application().mainloop()

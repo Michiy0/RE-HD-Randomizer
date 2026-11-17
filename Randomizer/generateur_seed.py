@@ -40,6 +40,9 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # textes.py, même avec python -I
+from textes import tr  # noqa: E402
+
 FICHIER_PAR_DEFAUT = "donnees_randomizer_RE1.xlsx"
 
 NOMS_OBJETS = {
@@ -170,30 +173,30 @@ def seed_installee(dossier):
     return (m.group(1) if m else "?", bool(a and a.group(1) == "true"))
 
 
-def installer_seed(fichier_lua, dossier_jeu, graine, armes, dire=print):
+def installer_seed(fichier_lua, dossier_jeu, graine, armes, dire=print, langue="fr"):
     dossier = Path(dossier_jeu) if dossier_jeu else trouver_dossier_jeu()
     if dossier is None or not (dossier / "bhd.exe").exists():
-        dire("INSTALLATION IMPOSSIBLE : dossier du jeu introuvable (bhd.exe absent). "
-             "Indique-le avec --dossier-jeu.")
+        dire(tr("gen_install_impossible", langue))
         return False
     ancienne = seed_installee(dossier)
     cible = dossier / NOM_SEED_JEU
     cible.write_bytes(Path(fichier_lua).read_bytes())
-    dire(f"Seed {graine}{' (armes)' if armes else ''} installée : {cible}"
-         + (f"  (remplace la seed {ancienne[0]}{' (armes)' if ancienne[1] else ''})" if ancienne else ""))
+    suffixe = tr("gen_armes", langue)
+    dire(tr("gen_installee", langue, graine=graine, armes=suffixe if armes else "", chemin=cible)
+         + (tr("gen_remplace", langue, ancienne=f"{ancienne[0]}{suffixe if ancienne[1] else ''}")
+            if ancienne else ""))
 
     ini = dossier / "randomizer.ini"
     if ini.exists():
         texte = ini.read_text(encoding="utf-8", errors="replace")
         m = re.search(r"(?im)^\s*Seed\s*=\s*(.+?)\s*$", texte)
         if m and m.group(1).lower() != NOM_SEED_JEU:
-            dire(f"ATTENTION : randomizer.ini demande la seed « {m.group(1)} », pas {NOM_SEED_JEU}.")
+            dire(tr("gen_ini_autre", langue, seed=m.group(1), nom=NOM_SEED_JEU))
         if re.search(r"(?im)^\s*Actif\s*=\s*0", texte):
-            dire("ATTENTION : randomizer.ini contient Actif=0, le randomizer est désactivé.")
+            dire(tr("gen_ini_inactif", langue))
     if not (dossier / "xinput1_4.dll").exists():
-        dire("ATTENTION : xinput1_4.dll absent du dossier du jeu, la seed ne sera pas appliquée "
-             "(copie DLL\\xinput1_4.dll).")
-    dire("Relance le jeu pour que la nouvelle seed soit prise en compte.")
+        dire(tr("gen_dll_absente", langue))
+    dire(tr("gen_relance", langue))
     return True
 
 
@@ -202,11 +205,12 @@ def tirer_graine():
 
 
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
-             dire=print, personnage="Chris", difficulte="Normal"):
+             dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
-    Renvoie True si tout s'est bien passé."""
+    Renvoie True si tout s'est bien passé. langue : langue des messages et du spoiler (textes.py).
+    dire_spoiler : si donné, reçoit le spoiler complet (sinon il passe par dire)."""
     if not Path(fichier).exists():
-        dire(f"Fichier de données introuvable : {fichier}")
+        dire(tr("gen_donnees", langue, fichier=fichier))
         return False
     ids_libres = set(IDS_LIBRES_DE_BASE) | (IDS_ARMES if armes_aleatoires else set())
     nom = f"seed_{graine}{'_armes' if armes_aleatoires else ''}"
@@ -215,7 +219,8 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
 
     emplacements, ignores = lire_emplacements(fichier, personnage, difficulte)
     if not emplacements:
-        dire(f"Aucun emplacement relevé pour {personnage} / {difficulte} : rien à mélanger.")
+        dire(tr("gen_aucun", langue, personnage=personnage,
+                difficulte=tr(f"diff_{difficulte}", langue)))
         return False
     resultat = generer(emplacements, graine, ids_libres)
     verifier(resultat)
@@ -241,21 +246,24 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     fichier_lua = sortie_dir / f"{nom}.lua"
     fichier_lua.write_text("\n".join(lua) + "\n", encoding="utf-8")
 
-    lignes = [f"Graine {graine} — armes aléatoires : {'OUI' if armes_aleatoires else 'non'}",
-              f"{len(resultat)} objets mélangés, {len(emplacements) - len(resultat)} laissés à leur place "
-              f"(clés et objets spéciaux" + ("" if armes_aleatoires else ", pistolet") + ").", ""]
+    nom_objet = lambda ident: tr(f"objet_{ident}", langue)
+    lignes = [tr("gen_resume", langue, graine=graine,
+                 armes=tr("gen_oui" if armes_aleatoires else "gen_non", langue)),
+              tr("gen_compte", langue, n=len(resultat), m=len(emplacements) - len(resultat),
+                 pistolet="" if armes_aleatoires else tr("gen_pistolet", langue)), ""]
     for r in sorted(resultat, key=lambda x: x["piece"]):
         a, n = r["ancien"], r["nouveau"]
         lignes.append(f"[{r['piece'].upper():>3}] {r['nom_piece']}: "
-                      f"{NOMS_OBJETS[a['id']]} x{a['quantite']}  ->  {NOMS_OBJETS[n['id']]} x{n['quantite']}")
+                      f"{nom_objet(a['id'])} x{a['quantite']}  ->  {nom_objet(n['id'])} x{n['quantite']}")
     if ignores:
-        lignes += ["", "Emplacements non utilisés (valeurs fixes incomplètes) :"]
+        lignes += ["", tr("gen_non_utilises", langue)]
         lignes += [f"  - [{f['piece'].upper()}] {f['description']}" for f, _ in ignores]
     (sortie_dir / f"{nom}_spoiler.txt").write_text("\n".join(lignes), encoding="utf-8")
-    dire("\n".join(lignes))
-    dire(f"\nFichiers écrits dans {sortie_dir.resolve()} : {nom}.json, {nom}.lua et {nom}_spoiler.txt\n")
+    (dire_spoiler or dire)("\n".join(lignes))
+    dire(tr("gen_fichiers", langue, dossier=sortie_dir.resolve(), a=f"{nom}.json", b=f"{nom}.lua",
+            c=f"{nom}_spoiler.txt"))
     if installer:
-        return installer_seed(fichier_lua, dossier_jeu, graine, armes_aleatoires, dire)
+        return installer_seed(fichier_lua, dossier_jeu, graine, armes_aleatoires, dire, langue)
     return True
 
 
