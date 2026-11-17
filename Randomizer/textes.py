@@ -32,6 +32,50 @@ T = {
     "onglet_spoiler": ("Spoiler", "Spoiler", "ネタバレ", "Spoiler", "Spoiler", "Спойлер", "剧透"),
     "onglet_aide": ("Aider le projet", "Help the project", "プロジェクトに協力", "Ayudar al proyecto",
                     "Ajudar o projeto", "Помочь проекту", "协助项目"),
+    "onglet_installation": ("Installation", "Installation", "インストール", "Instalación", "Instalação",
+                            "Установка", "安装"),
+    "onglet_generer": ("Générer une seed", "Generate a seed", "シード生成", "Generar una semilla",
+                       "Gerar uma semente", "Создать сид", "生成种子"),
+    "install_etapes": (
+        "À faire une seule fois :\n"
+        "1.  Vérifie le dossier du jeu (il est trouvé tout seul la plupart du temps).\n"
+        "2.  Clique « Installer la DLL ».\n"
+        "3.  Les onglets « Générer une seed » et « Spoiler » se débloquent.",
+        "Only once:\n"
+        "1.  Check the game folder (it is usually found automatically).\n"
+        "2.  Click “Install the DLL”.\n"
+        "3.  The “Generate a seed” and “Spoiler” tabs unlock.",
+        "最初に一度だけ：\n"
+        "1.  ゲームのフォルダーを確認（ほとんどの場合は自動で見つかります）。\n"
+        "2.  「DLLをインストール」をクリック。\n"
+        "3.  「シード生成」と「スポイラー」のタブが使えるようになります。",
+        "Solo una vez:\n"
+        "1.  Comprueba la carpeta del juego (casi siempre se encuentra sola).\n"
+        "2.  Haz clic en «Instalar la DLL».\n"
+        "3.  Las pestañas «Generar una semilla» y «Spoiler» se desbloquean.",
+        "Só uma vez:\n"
+        "1.  Confira a pasta do jogo (quase sempre é encontrada sozinha).\n"
+        "2.  Clique em “Instalar a DLL”.\n"
+        "3.  As abas “Gerar uma semente” e “Spoiler” são liberadas.",
+        "Только один раз:\n"
+        "1.  Проверьте папку игры (обычно она находится сама).\n"
+        "2.  Нажмите «Установить DLL».\n"
+        "3.  Вкладки «Создать сид» и «Спойлер» станут доступны.",
+        "只需一次：\n"
+        "1.  确认游戏文件夹（通常会自动找到）。\n"
+        "2.  点击“安装 DLL”。\n"
+        "3.  “生成种子”和“剧透”选项卡随即解锁。"),
+    "install_etape_proton": (
+        "Sur Steam Deck / Linux : colle aussi l'option de lancement ci-dessous dans Steam.",
+        "On Steam Deck / Linux: also paste the launch option below into Steam.",
+        "Steam Deck / Linux：下の起動オプションもSteamに貼り付けてください。",
+        "En Steam Deck / Linux: pega también la opción de lanzamiento de abajo en Steam.",
+        "No Steam Deck / Linux: cole também a opção de inicialização abaixo na Steam.",
+        "На Steam Deck / Linux: вставьте также параметр запуска ниже в Steam.",
+        "在 Steam Deck / Linux 上：还需把下方的启动选项粘贴到 Steam 中。"),
+    "suivant_generer": ("Suivant : générer une seed  →", "Next: generate a seed  →", "次へ：シード生成  →",
+                        "Siguiente: generar una semilla  →", "Próximo: gerar uma semente  →",
+                        "Далее: создать сид  →", "下一步：生成种子  →"),
     "carte_jeu": ("Jeu", "Game", "ゲーム", "Juego", "Jogo", "Игра", "游戏"),
     "carte_partie": ("Partie", "Playthrough", "プレイ設定", "Partida", "Partida", "Прохождение", "游戏设置"),
     "carte_options": ("Options", "Options", "オプション", "Opciones", "Opções", "Параметры", "选项"),
@@ -75,6 +119,44 @@ T = {
     "badge_installe": ("●  Randomizer installé", "●  Randomizer installed", "●  ランダマイザー導入済み",
                        "●  Randomizer instalado", "●  Randomizer instalado", "●  Рандомайзер установлен",
                        "●  随机器已安装"),
+    "badge_dll_ancienne": ("●  DLL à mettre à jour", "●  DLL needs updating", "●  DLLの更新が必要",
+                           "●  Hay que actualizar la DLL", "●  A DLL precisa ser atualizada",
+                           "●  DLL нужно обновить", "●  DLL 需要更新"),
+    "maj_disponible": ("Mise à jour v{version}", "Update v{version}", "アップデート v{version}",
+                       "Actualización v{version}", "Atualização v{version}", "Обновление v{version}",
+                       "更新 v{version}"),
+    "maj_confirmer": (
+        "La version {version} est disponible (tu as la {actuelle}).\n\nLa télécharger et l'installer maintenant ? "
+        "L'application redémarrera toute seule.",
+        "Version {version} is available (you have {actuelle}).\n\nDownload and install it now? "
+        "The app will restart by itself.",
+        "バージョン {version} が利用できます（現在 {actuelle}）。\n\n今すぐダウンロードしてインストールしますか？"
+        "アプリは自動的に再起動します。",
+        "La versión {version} está disponible (tienes la {actuelle}).\n\n¿Descargarla e instalarla ahora? "
+        "La aplicación se reiniciará sola.",
+        "A versão {version} está disponível (você tem a {actuelle}).\n\nBaixar e instalar agora? "
+        "O aplicativo reiniciará sozinho.",
+        "Доступна версия {version} (у вас {actuelle}).\n\nСкачать и установить сейчас? "
+        "Приложение перезапустится само.",
+        "版本 {version} 已发布（当前为 {actuelle}）。\n\n现在下载并安装吗？应用将自动重启。"),
+    "maj_telechargement": ("Téléchargement… {pct} %", "Downloading… {pct} %", "ダウンロード中… {pct} %",
+                           "Descargando… {pct} %", "Baixando… {pct} %", "Загрузка… {pct} %", "下载中… {pct} %"),
+    "maj_erreur": (
+        "La mise à jour a échoué :\n{e}\n\nOuvrir la page de téléchargement ?",
+        "The update failed:\n{e}\n\nOpen the download page?",
+        "アップデートに失敗しました：\n{e}\n\nダウンロードページを開きますか？",
+        "La actualización falló:\n{e}\n\n¿Abrir la página de descarga?",
+        "A atualização falhou:\n{e}\n\nAbrir a página de download?",
+        "Обновление не удалось:\n{e}\n\nОткрыть страницу загрузки?",
+        "更新失败：\n{e}\n\n打开下载页面吗？"),
+    "maj_page": (
+        "La version {version} est disponible (tu as la {actuelle}).\n\nOuvrir la page de téléchargement ?",
+        "Version {version} is available (you have {actuelle}).\n\nOpen the download page?",
+        "バージョン {version} が利用できます（現在 {actuelle}）。\n\nダウンロードページを開きますか？",
+        "La versión {version} está disponible (tienes la {actuelle}).\n\n¿Abrir la página de descarga?",
+        "A versão {version} está disponível (você tem a {actuelle}).\n\nAbrir a página de download?",
+        "Доступна версия {version} (у вас {actuelle}).\n\nОткрыть страницу загрузки?",
+        "版本 {version} 已发布（当前为 {actuelle}）。\n\n打开下载页面吗？"),
     "badge_origine": ("●  Jeu d'origine (DLL non installée)", "●  Original game (DLL not installed)",
                       "●  元のゲーム（DLL未インストール）", "●  Juego original (DLL no instalada)",
                       "●  Jogo original (DLL não instalada)", "●  Исходная игра (DLL не установлена)",
@@ -145,12 +227,49 @@ T = {
     # ------------------------------------------------------------ carte Options
     "armes_aleatoires": ("Armes aléatoires", "Random weapons", "武器もランダム", "Armas aleatorias",
                          "Armas aleatórias", "Случайное оружие", "随机武器"),
-    "note_armes": ("Le pistolet du hall est mélangé lui aussi.", "The handgun in the main hall is shuffled too.",
-                   "ホールのハンドガンもシャッフルされます。", "La pistola del vestíbulo también se mezcla.",
-                   "A pistola do saguão também é embaralhada.", "Пистолет из главного зала тоже перемешивается.",
-                   "大厅里的手枪也会被打乱。"),
+    "note_armes": (
+        "Les armes de base du jeu sont mélangées avec les objets. Décoche celles qui doivent rester à leur place.",
+        "The game's standard weapons are shuffled with the items. Untick those that should stay in place.",
+        "ゲームの基本武器もアイテムと一緒にシャッフルされます。元の場所に残したい武器はチェックを外してください。",
+        "Las armas básicas del juego se mezclan con los objetos. Desmarca las que deban quedarse en su sitio.",
+        "As armas básicas do jogo são embaralhadas com os itens. Desmarque as que devem ficar no lugar.",
+        "Обычное оружие игры перемешивается с предметами. Снимите отметку с того, что должно остаться на месте.",
+        "游戏的基础武器会与物品一起打乱。取消勾选要留在原位的武器。"),
+    "arme_pistolet": ('Pistolet', 'Handgun', 'ハンドガン', 'Pistola', 'Pistola', 'Пистолет', '手枪'),
+    "arme_fusil_pompe": ('Fusil à pompe', 'Shotgun', 'ショットガン', 'Escopeta', 'Espingarda', 'Дробовик', '霰弹枪'),
+    "arme_fusil_assaut": ("Fusil d'attaque", 'Assault shotgun', 'アサルトショットガン', 'Escopeta de asalto', 'Espingarda de assalto', 'Штурмовой дробовик', '突击霰弹枪'),
+    "arme_lance_grenades": ('Lance-grenades', 'Grenade launcher', 'グレネードランチャー', 'Lanzagranadas', 'Lança-granadas', 'Гранатомёт', '榴弹发射器'),
+    "arme_lance_flammes": ('Lance-flammes', 'Flamethrower', '火炎放射器', 'Lanzallamas', 'Lança-chamas', 'Огнемёт', '火焰喷射器'),
+    "arme_autodefense": ("Pistolet d'autodéfense", 'Self-defense gun', '護身用ハンドガン', 'Pistola de autodefensa', 'Pistola de autodefesa', 'Пистолет самообороны', '自卫手枪'),
+    "arme_lance_roquettes": ('Lance-roquettes (fin du jeu)', 'Rocket launcher (end of game)', 'ロケットランチャー（終盤）', 'Lanzacohetes (final del juego)', 'Lança-foguetes (fim do jogo)', 'Ракетница (конец игры)', '火箭筒（游戏结尾）'),
+    "arme_magnums": ('Magnums', 'Magnums', 'マグナム', 'Mágnums', 'Magnums', 'Магнумы', '马格南'),
+    "chris_uniquement": ('Chris uniquement', 'Chris only', 'クリスのみ', 'solo Chris', 'só Chris', 'только Крис', '仅克里斯'),
+    "jill_uniquement": ('Jill uniquement', 'Jill only', 'ジルのみ', 'solo Jill', 'só Jill', 'только Джилл', '仅吉尔'),
     "cles_aleatoires": ("Clés aléatoires", "Random keys", "鍵もランダム", "Llaves aleatorias", "Chaves aleatórias",
                         "Случайные ключи", "随机钥匙"),
+    "ennemis_aleatoires": ("Ennemis aléatoires", "Random enemies", "敵もランダム", "Enemigos aleatorios",
+                           "Inimigos aleatórios", "Случайные враги", "随机敌人"),
+    "armes_bonus": ("Armes bonus", "Bonus weapons", "ボーナス武器", "Armas extra", "Armas bônus",
+                    "Бонусное оружие", "奖励武器"),
+    "note_armes_bonus": (
+        "Samurai Edge et lance-roquettes à munitions illimitées : normalement débloqués en finissant le jeu "
+        "en Normal ou Difficile, en moins de 5 h et en moins de 3 h.",
+        "Samurai Edge and rocket launcher with unlimited ammo: normally unlocked by finishing the game "
+        "on Normal or Hard in under 5 h and under 3 h.",
+        "無限弾のサムライエッジとロケットランチャー：通常はノーマルかハードを5時間以内・3時間以内に"
+        "クリアすると手に入ります。",
+        "Samurai Edge y lanzacohetes con munición ilimitada: normalmente se desbloquean al terminar el juego "
+        "en Normal o Difícil en menos de 5 h y de 3 h.",
+        "Samurai Edge e lança-foguetes com munição ilimitada: normalmente liberados ao terminar o jogo "
+        "no Normal ou Difícil em menos de 5 h e de 3 h.",
+        "Samurai Edge и ракетница с бесконечными патронами: обычно открываются за прохождение на «Нормально» "
+        "или «Сложно» быстрее 5 ч и 3 ч.",
+        "无限弹药的武士之刃与火箭筒：通常需以普通或困难难度分别在 5 小时、3 小时内通关解锁。"),
+    "aucune_arme": ("Aucune arme cochée : les armes restent à leur place.",
+                    "No weapon ticked: weapons stay in place.", "武器が選ばれていません：武器は元の場所のままです。",
+                    "Ningún arma marcada: las armas se quedan en su sitio.",
+                    "Nenhuma arma marcada: as armas ficam no lugar.",
+                    "Оружие не выбрано: оно останется на своих местах.", "未勾选任何武器：武器保持原位。"),
     "graine": ("Graine", "Seed", "シード", "Semilla", "Semente", "Сид", "种子"),
     "au_hasard": ("Au hasard", "Random", "ランダム", "Al azar", "Aleatória", "Случайно", "随机"),
     "note_graine": ("Même graine + mêmes options = même résultat.", "Same seed + same options = same result.",
@@ -166,13 +285,13 @@ T = {
                             "Установить сид в игру", "将种子安装到游戏"),
     "dossier_seeds": ("Dossier des seeds", "Seeds folder", "シードのフォルダー", "Carpeta de seeds",
                       "Pasta das seeds", "Папка сидов", "种子文件夹"),
-    "pret": ("Prêt. Installe la DLL si ce n'est pas fait, choisis tes options puis « Générer la seed ».",
-             "Ready. Install the DLL if needed, choose your options, then click “Generate seed”.",
-             "準備完了。必要なら DLL をインストールし、オプションを選んで「シードを生成」を押してください。",
-             "Listo. Instala la DLL si hace falta, elige tus opciones y pulsa «Generar la seed».",
-             "Pronto. Instale a DLL se necessário, escolha as opções e clique em “Gerar a seed”.",
-             "Готово. Установите DLL при необходимости, выберите параметры и нажмите «Создать сид».",
-             "就绪。如有需要请先安装 DLL，选择选项后点击“生成种子”。"),
+    "pret": ("Prêt. Choisis tes options puis « Générer la seed ».",
+             "Ready. Choose your options, then click “Generate seed”.",
+             "準備完了。オプションを選んで「シードを生成」を押してください。",
+             "Listo. Elige tus opciones y pulsa «Generar la seed».",
+             "Pronto. Escolha as opções e clique em “Gerar a seed”.",
+             "Готово. Выберите параметры и нажмите «Создать сид».",
+             "就绪。选择选项后点击“生成种子”。"),
     "donnees_absentes": ("Fichier de données {fichier} introuvable : génération impossible.",
                          "Data file {fichier} not found: cannot generate.",
                          "データファイル {fichier} が見つかりません：生成できません。",

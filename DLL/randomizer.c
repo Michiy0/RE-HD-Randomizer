@@ -392,7 +392,7 @@ static void scanner_piece(DWORD piece)
 }
 
 /* Cherche qui pointe vers l'objet ramassé (pour trouver la liste des objets de la pièce). */
-typedef struct { DWORD s, partie, ebx, ecx, esi, edi, piece; } Ramassage;
+typedef struct { DWORD s, partie, ebx, ecx, esi, edi, piece, zone[8], id_qte, num; } Ramassage;
 static Ramassage g_file[16];
 static volatile LONG g_file_ecrit, g_file_lu;
 
@@ -443,6 +443,81 @@ static void noter_ramassage(const CONTEXT *c)
     p->partie = lisible((void *)ADR_PTR_PARTIE, 4, 0) ? *(DWORD *)ADR_PTR_PARTIE : 0;
     p->piece = 0;
     piece_actuelle(&p->piece);
+    memset(p->zone, 0, sizeof p->zone);
+    p->id_qte = p->num = 0;
+    if (lisible((void *)(c->Eax + 0x10), 0x30, 0)) {
+        memcpy(p->zone, (void *)(c->Eax + 0x10), sizeof p->zone);
+        p->num = *(DWORD *)(c->Eax + 0x30);
+        p->id_qte = *(DWORD *)(c->Eax + 0x34);
+    }
+}
+
+/* ------------------------------------------- diagnostic : origine de l'objet ramassé */
+
+/* D'où le jeu tire-t-il l'objet posé ? On cherche dans toute la mémoire les autres copies de sa zone de
+ * ramassage : en flottants (x1, z1 consécutifs, comme dans l'objet) et en entiers 16 bits arrondis (format
+ * des scripts de pièce du Resident Evil d'origine). Une copie hors du tas, ou dans une zone qui contient
+ * aussi l'id et la quantité, est sans doute le « script » de la pièce : en le modifiant avant la création
+ * des objets, le jeu afficherait le nouvel objet par terre et dans l'aperçu. */
+typedef struct { DWORD adr[48]; BYTE type[48]; int nb; DWORD f1, f2, objet; WORD e1, e2; } Origines;
+
+static void visiter_origine(DWORD base, const BYTE *t, DWORD n, void *ctx)
+{
+    Origines *r = (Origines *)ctx;
+    DWORD i;
+    for (i = 0; i + 8 <= n && r->nb < 48; i += 2) {
+        DWORD a = base + i;
+        if (a >= r->objet && a < r->objet + 0x40) continue;          /* l'objet lui-même */
+        if ((i & 3) == 0 && *(const DWORD *)(t + i) == r->f1 && *(const DWORD *)(t + i + 4) == r->f2) {
+            r->adr[r->nb] = a; r->type[r->nb++] = 'f';
+        } else if (*(const WORD *)(t + i) == r->e1 && *(const WORD *)(t + i + 2) == r->e2 && r->nb < 40) {
+            r->adr[r->nb] = a; r->type[r->nb++] = 'e';
+        }
+    }
+}
+
+static WORD flottant_vers_entier(DWORD bits)
+{
+    union { DWORD d; float f; } u;
+    u.d = bits;
+    return (WORD)(short)(u.f < 0 ? u.f - 0.5f : u.f + 0.5f);
+}
+
+static void chercher_origine(const Ramassage *p)
+{
+    static Origines r;
+    static char t[49152];
+    int n = 0, k, i;
+    DWORD debut = GetTickCount();
+
+    if (!p->zone[0] && !p->zone[1]) return;
+    memset(&r, 0, sizeof r);
+    r.f1 = p->zone[0]; r.f2 = p->zone[1]; r.objet = p->s;
+    r.e1 = flottant_vers_entier(p->zone[0]); r.e2 = flottant_vers_entier(p->zone[1]);
+    parcourir_memoire(visiter_origine, &r);
+    diag_ajouter(t, &n, sizeof t, "==== origine de l'objet %08X (piece %X, id=%u qte=%u, +30=%08X) : %d copie(s) "
+                 "de la zone (x1=%08X z1=%08X ; entiers %d, %d) (%lu ms)\r\n", p->s, p->piece, p->id_qte >> 16,
+                 p->id_qte & 0xFFFF, p->num, r.nb, r.f1, r.f2, (short)r.e1, (short)r.e2,
+                 (unsigned long)(GetTickCount() - debut));
+    for (k = 0; k < r.nb; k++) {
+        MEMORY_BASIC_INFORMATION mbi;
+        BYTE v[0xA0];
+        const char *sorte = "?";
+        if (VirtualQuery((LPCVOID)r.adr[k], &mbi, sizeof mbi))
+            sorte = mbi.Type == MEM_IMAGE ? "image" : mbi.Type == MEM_MAPPED ? "fichier" : "tas";
+        diag_ajouter(t, &n, sizeof t, "%c %08X  [%s, base %08X]", r.type[k], r.adr[k], sorte,
+                     (DWORD)mbi.AllocationBase);
+        if (copier(r.adr[k] - 0x40, v, sizeof v)) {
+            for (i = 0; i < (int)sizeof v; i += 4) {
+                if (i % 32 == 0) diag_ajouter(t, &n, sizeof t, "\r\n   %c%02X:", i < 0x40 ? '-' : '+',
+                                              i < 0x40 ? 0x40 - i : i - 0x40);
+                diag_ajouter(t, &n, sizeof t, i == 0x40 ? " |%08X" : " %08X", *(DWORD *)(v + i));
+            }
+        }
+        diag_ajouter(t, &n, sizeof t, "\r\n");
+    }
+    diag_ajouter(t, &n, sizeof t, "\r\n");
+    ecrire_diag(t, n);
 }
 
 /* --------------------------------------------- mode relevé (Releve=1) */
@@ -507,6 +582,7 @@ static void diagnostic_periodique(void)
 
     while (g_diagnostic && g_file_lu < g_file_ecrit) {
         chercher_pointeurs(&g_file[g_file_lu & 15]);
+        chercher_origine(&g_file[g_file_lu & 15]);
         InterlockedIncrement(&g_file_lu);
     }
     if (!piece_actuelle(&piece) || piece == 0) return;   /* 0 : chargement ou menu */
@@ -644,7 +720,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.6.2 : demarrage");
+    journal("---- Randomizer RE HD v0.7 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */

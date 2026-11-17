@@ -55,8 +55,19 @@ NOMS_OBJETS = {
 }
 # Objets toujours mélangés sans risque
 IDS_LIBRES_DE_BASE = {17, 34, 68, 101, 112}
-# Armes : mélangées seulement avec l'option --armes-aleatoires
-IDS_ARMES = {3}
+# Armes de base du jeu : mélangées seulement avec l'option --armes-aleatoires.
+# (clé du nom dans textes.py, id dans le jeu ou None s'il n'est pas encore relevé, personnage ou None = les deux)
+ARMES = [
+    ("arme_pistolet", 3, None),
+    ("arme_fusil_pompe", None, None),
+    ("arme_fusil_assaut", None, None),
+    ("arme_lance_grenades", None, "Jill"),
+    ("arme_lance_flammes", None, "Chris"),
+    ("arme_autodefense", None, None),
+    ("arme_lance_roquettes", None, None),   # celui de la fin du jeu (une seule roquette), pas le bonus illimité
+    ("arme_magnums", None, None),
+]
+IDS_ARMES = {i for _, i, _ in ARMES if i is not None}
 
 MOTIF_EMPREINTE = re.compile(r"brut \+0x10\.\.\+0x2C = ((?:[0-9A-Fa-f]{8}\s*){8})")
 
@@ -210,14 +221,18 @@ def tirer_graine():
 
 
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
-             dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None):
+             dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None,
+             armes_choisies=None):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
     Renvoie True si tout s'est bien passé. langue : langue des messages et du spoiler (textes.py).
-    dire_spoiler : si donné, reçoit le spoiler complet (sinon il passe par dire)."""
+    dire_spoiler : si donné, reçoit le spoiler complet (sinon il passe par dire).
+    armes_choisies : ids des armes à mélanger avec armes_aleatoires (None = toutes celles connues)."""
     if not Path(fichier).exists():
         dire(tr("gen_donnees", langue, fichier=fichier))
         return False
-    ids_libres = set(IDS_LIBRES_DE_BASE) | (IDS_ARMES if armes_aleatoires else set())
+    ids_armes = set(IDS_ARMES) if armes_choisies is None else set(armes_choisies) & IDS_ARMES
+    armes_aleatoires = bool(armes_aleatoires and ids_armes)   # aucune arme cochée = option sans effet
+    ids_libres = set(IDS_LIBRES_DE_BASE) | (ids_armes if armes_aleatoires else set())
     nom = f"seed_{graine}{'_armes' if armes_aleatoires else ''}"
     sortie_dir = Path(dossier_sortie)
     sortie_dir.mkdir(parents=True, exist_ok=True)

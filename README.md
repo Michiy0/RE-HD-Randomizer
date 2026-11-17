@@ -27,13 +27,13 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
 
-## État : version 0.6.2 (test)
+## État : version 0.7 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal | Jill, autres difficultés |
 | 34 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
-| Option **armes aléatoires** (le pistolet du hall est mélangé lui aussi) | Davantage d'emplacements, armes bonus |
+| Option **armes aléatoires**, avec le choix des armes à mélanger (pour l'instant le pistolet du hall) | Les autres armes, **armes bonus** (Samurai Edge et lance-roquettes illimités), ennemis aléatoires |
 | Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | — |
 
 **Version du jeu requise** : la version Steam actuelle de `bhd.exe` (9 640 360 octets, SHA-256
@@ -64,7 +64,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 | Jill | Difficile | 0/118 (0 %) | 0 | 0 |
 | Jill | Real Survival | 0/118 (0 %) | 0 | 0 |
 
-Armes bonus : liste à compléter. Mis à jour le 17/11/2026.
+Armes bonus : 0/2 identifiées. Mis à jour le 17/11/2026.
 
 </details>
 
@@ -77,11 +77,21 @@ Armes bonus : liste à compléter. Mis à jour le 17/11/2026.
 1. Télécharge `RandomizerREHD-v…-windows.zip` dans les **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)**
    et extrais-le où tu veux.
 2. Lance `RandomizerREHD.exe`. Le dossier du jeu est trouvé automatiquement (sinon : **Parcourir…**).
-3. Clique **Installer la DLL** (une seule fois).
+3. Onglet **Installation** : clique **Installer la DLL** (une seule fois). L'onglet **Générer une seed**
+   se débloque.
 4. Choisis tes options, puis **Générer la seed** (laisse cochée « Installer la seed dans le jeu »).
 5. Lance le jeu depuis Steam : **nouvelle partie, Chris, Normal**.
 
 Pour changer de seed : en générer une nouvelle, puis relancer le jeu.
+
+### Mises à jour
+
+Depuis la **v0.7**, l'application vérifie au démarrage s'il existe une nouvelle version : un bouton
+**Mise à jour** apparaît alors en haut, à côté du choix de langue. Un clic la télécharge, la vérifie,
+remplace l'application et la relance. Si la DLL du jeu doit aussi être mise à jour, l'application
+s'ouvre sur l'onglet **Installation**.
+
+Si tu as une version plus ancienne (0.6.2 ou avant), télécharge la v0.7 à la main une seule fois.
 
 > **SmartScreen / antivirus** : l'exe n'est pas signé (projet amateur). Windows peut afficher « Windows a
 > protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*. Certains antivirus
@@ -96,7 +106,7 @@ toujours avec Proton.
 1. En **mode Bureau**, télécharge `RandomizerREHD-v…-linux.tar.gz` et extrais-le.
 2. Double-clique sur `RandomizerREHD-linux` (si besoin : clic droit → *Propriétés* → *Permissions* →
    « Est exécutable »). Le jeu est trouvé dans la bibliothèque Steam, carte SD comprise.
-3. Clique **Installer la DLL**, puis **Copier** l'option de lancement affichée dans la carte *Jeu*, et
+3. Onglet **Installation** : clique **Installer la DLL**, puis **Copier** l'option de lancement, et
    colle-la une fois dans Steam (*Propriétés du jeu → Options de lancement*) :
    ```
    WINEDLLOVERRIDES="xinput1_4=n,b" %command%
@@ -115,18 +125,22 @@ Dans l'application : **Désinstaller la DLL** (sur Steam Deck, retire aussi l'op
 
 ## Utilisation
 
-L'application a trois onglets, et un sélecteur de langue en haut à droite (« Automatique » = langue du
+L'application a quatre onglets, et un sélecteur de langue en haut à droite (« Automatique » = langue du
 système, anglais sinon).
 
-- **Randomizer** — tout pour jouer, dans l'ordre :
-  - *Jeu* : dossier du jeu, état du randomizer et de la seed installée, installer / mettre à jour /
-    désinstaller la DLL ;
+- **Installation** — dossier du jeu, état du randomizer et de la seed installée, installer / mettre à
+  jour / désinstaller la DLL (et l'option de lancement sur Steam Deck). L'application s'ouvre ici tant
+  que la DLL n'est pas installée et à jour.
+- **Générer une seed** — débloqué une fois la DLL en place :
   - *Partie* : personnage et difficulté ;
-  - *Options* : armes aléatoires, graine (ou « Au hasard ») — même graine + mêmes options = même résultat ;
+  - *Options* : armes aléatoires (cocher la case affiche la liste des armes ; décoche celles qui doivent
+    rester à leur place), graine (ou « Au hasard ») — même graine + mêmes options = même résultat ;
   - **Générer la seed** : écrit la seed dans le dossier `seeds` et l'installe dans le jeu.
-- **Spoiler** — la liste complète des changements (« pièce : objet d'origine → nouvel objet »), cachée
-  tant qu'on ne coche pas *Afficher le spoiler*. Elle montre la dernière seed générée, ou celle installée.
+- **Spoiler** — débloqué dès qu'il y a une seed : la liste complète des changements (« pièce : objet
+  d'origine → nouvel objet »), cachée tant qu'on ne coche pas *Afficher le spoiler*.
 - **Aider le projet** — le mode relevé et les barres d'avancement (voir plus bas).
+
+Les options marquées « à venir » (clés, ennemis, armes bonus, autres armes…) sont visibles mais grisées.
 
 ### Compatibilité
 
@@ -190,7 +204,8 @@ s'est passé.
 donnees_randomizer_RE1.xlsx   données : pièces, objets, emplacements, pièces relevées, bonus
 DLL/                          la DLL (randomizer.c, xinput1_4.def) et ses scripts de compilation
 Randomizer/
-  application.py              l'application (3 onglets, 7 langues)
+  application.py              l'application (4 onglets, 7 langues)
+  mise_a_jour.py              mise à jour automatique depuis les Releases GitHub
   generateur_seed.py          génération des seeds (aussi en ligne de commande)
   importer_journal.py         importe les journaux de relevés dans le tableur
   progression.py              barres d'avancement de ce README
@@ -260,13 +275,13 @@ or strategies.
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
 
-### Status: version 0.6.2 (test)
+### Status: version 0.7 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty | Jill, other difficulties |
 | 34 placed-item locations: ammo, herbs, ink ribbons, daggers, first aid boxes | Keys and quest items (with logic that keeps the game completable) |
-| **Random weapons** option (the handgun in the main hall is shuffled too) | More locations, bonus weapons |
+| **Random weapons** option, with a choice of which weapons to shuffle (for now the main hall handgun) | The other weapons, **bonus weapons** (unlimited Samurai Edge and rocket launcher), random enemies |
 | Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | — |
 
 **Required game version**: the current Steam `bhd.exe` (9,640,360 bytes, SHA-256
@@ -283,11 +298,16 @@ game, for each character and difficulty, updated with every version.
 1. Download `RandomizerREHD-v…-windows.zip` from the
    **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)** and extract it anywhere.
 2. Run `RandomizerREHD.exe`. The game folder is found automatically (otherwise: **Browse…**).
-3. Click **Install the DLL** (once).
+3. **Installation** tab: click **Install the DLL** (once). The **Generate a seed** tab unlocks.
 4. Choose your options, then **Generate seed** (keep “Install the seed in the game” ticked).
 5. Start the game from Steam: **new game, Chris, Normal**.
 
 To change seeds: generate a new one, then restart the game.
+
+**Updates**: since **v0.7**, the app checks for a new version at startup; an **Update** button then
+appears at the top, next to the language selector. One click downloads it, checks it, replaces the app
+and restarts it. If the game's DLL also needs updating, the app opens on the **Installation** tab.
+If you have an older version (0.6.2 or earlier), download v0.7 manually once.
 
 > **SmartScreen / antivirus**: the exe is not signed (hobby project). Windows may show “Windows protected
 > your PC” → *More info* → *Run anyway*. Some antivirus tools may also flag the DLL by mistake: it uses a
@@ -301,7 +321,7 @@ The app has a **native Linux** version (no Proton needed for it); the game itsel
 1. In **Desktop Mode**, download `RandomizerREHD-v…-linux.tar.gz` and extract it.
 2. Double-click `RandomizerREHD-linux` (if needed: right-click → *Properties* → *Permissions* → “Is
    executable”). The game is found in your Steam library, SD card included.
-3. Click **Install the DLL**, then **Copy** the launch option shown in the *Game* card, and paste it once
+3. **Installation** tab: click **Install the DLL**, then **Copy** the launch option, and paste it once
    in Steam (*game Properties → Launch Options*):
    ```
    WINEDLLOVERRIDES="xinput1_4=n,b" %command%
@@ -318,17 +338,21 @@ option). “Remove the installed seed” only removes the seed: without a seed, 
 
 ### Usage
 
-The app has three tabs, and a language selector at the top right (“Automatic” = system language, English
+The app has four tabs, and a language selector at the top right (“Automatic” = system language, English
 otherwise).
 
-- **Randomizer** — everything you need to play, in order:
-  - *Game*: game folder, randomizer and installed seed status, install / update / uninstall the DLL;
+- **Installation** — game folder, randomizer and installed seed status, install / update / uninstall the
+  DLL (and the launch option on Steam Deck). The app opens here until the DLL is installed and up to date.
+- **Generate a seed** — unlocked once the DLL is in place:
   - *Playthrough*: character and difficulty;
-  - *Options*: random weapons, seed (or “Random”) — same seed + same options = same result;
+  - *Options*: random weapons (ticking it shows the weapon list; untick those that should stay in place),
+    seed (or “Random”) — same seed + same options = same result;
   - **Generate seed**: writes the seed to the `seeds` folder and installs it in the game.
-- **Spoiler** — the full list of changes (“room: original item → new item”), hidden until you tick
-  *Show spoiler*. It shows the last generated seed, or the installed one.
+- **Spoiler** — unlocked as soon as there is a seed: the full list of changes (“room: original item → new
+  item”), hidden until you tick *Show spoiler*.
 - **Help the project** — survey mode and the progress bars (see below).
+
+Options marked “coming soon” (keys, enemies, bonus weapons, other weapons…) are visible but greyed out.
 
 **Compatibility**
 
@@ -386,7 +410,8 @@ Open an [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues) and attach `
 donnees_randomizer_RE1.xlsx   data: rooms, items, locations, surveyed rooms, bonus
 DLL/                          the DLL (randomizer.c, xinput1_4.def) and its build scripts
 Randomizer/
-  application.py              the app (3 tabs, 7 languages)
+  application.py              the app (4 tabs, 7 languages)
+  mise_a_jour.py              automatic update from the GitHub Releases
   generateur_seed.py          seed generation (also command line)
   importer_journal.py         imports survey logs into the spreadsheet
   progression.py              progress bars of this README

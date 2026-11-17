@@ -19,10 +19,11 @@ from tkinter import filedialog, messagebox, ttk
 from tkinter import font as tkfont
 
 import generateur_seed as gen
+import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.6.2"
+VERSION = "0.7"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
@@ -56,6 +57,14 @@ def trouver_ressource(nom, sous_dossiers=("", "..", "../DLL", "DLL")):
 
 
 _versions_verifiees = {}
+
+
+def dll_a_jour(installee, fournie):
+    """Vrai si la DLL du jeu est identique à celle livrée avec l'application (ou si on ne peut pas comparer)."""
+    try:
+        return fournie is None or Path(installee).read_bytes() == Path(fournie).read_bytes()
+    except OSError:
+        return True
 
 
 def version_jeu_ok(dossier):
@@ -287,6 +296,7 @@ def appliquer_style(racine):
           foreground=[("disabled", c["grise"])])
     s.configure("Accent.TButton", background=c["accent"], foreground="#ffffff", bordercolor=c["accent"],
                 lightcolor=c["accent"], darkcolor=c["accent"], font=(POLICE, 11, "bold"), padding=(26, 10))
+    s.configure("Maj.Accent.TButton", font=(POLICE, 10, "bold"), padding=(12, 5))   # bouton de mise à jour (en-tête)
     s.map("Accent.TButton",
           background=[("disabled", c["champ"]), ("pressed", c["accent_presse"]), ("active", c["accent_survol"])],
           lightcolor=[("active", c["accent_survol"])], darkcolor=[("active", c["accent_survol"])],
@@ -309,8 +319,8 @@ def appliquer_style(racine):
     s.configure("TNotebook.Tab", background=c["fond"], foreground=c["discret"], padding=(18, 9),
                 font=(POLICE, 10, "bold"), borderwidth=0, bordercolor=c["fond"], lightcolor=c["fond"],
                 darkcolor=c["fond"])
-    s.map("TNotebook.Tab", background=[("selected", c["carte"]), ("active", c["survol"])],
-          foreground=[("selected", c["texte"]), ("active", c["texte"])],
+    s.map("TNotebook.Tab", background=[("disabled", c["fond"]), ("selected", c["carte"]), ("active", c["survol"])],
+          foreground=[("disabled", c["grise"]), ("selected", c["texte"]), ("active", c["texte"])],
           bordercolor=[("selected", c["bord"])], lightcolor=[("selected", c["carte"])],
           darkcolor=[("selected", c["carte"])])
     # liste déroulante (sélecteur de langue)
@@ -448,7 +458,7 @@ class Application(tk.Tk):
         # taille adaptée à l'écran : le Steam Deck (1280×800, barre des tâches comprise) laisse ~720 px
         largeur_ecran, hauteur_ecran = self.winfo_screenwidth(), self.winfo_screenheight()
         self.minsize(640, 480)
-        self.geometry(f"{min(780, largeur_ecran - 40)}x{min(880, hauteur_ecran - 80)}")
+        self.geometry(f"{min(1140, largeur_ecran - 40)}x{min(950, hauteur_ecran - 80)}")
         icone = trouver_ressource("icone.ico" if SOUS_WINDOWS else "icone.png", ("",))
         if icone:
             try:
@@ -469,7 +479,11 @@ class Application(tk.Tk):
         self.personnage = tk.StringVar(value="Chris")
         self.difficulte = tk.StringVar(value="Normal")
         self.armes = tk.BooleanVar(value=False)
+        # une case par arme de base (cochées par défaut, sauf celles pas encore relevées) ; visibles seulement avec « Armes aléatoires »
+        self.armes_cochees = {cle: tk.BooleanVar(value=id_arme is not None) for cle, id_arme, _ in gen.ARMES}
         self.cles = tk.BooleanVar(value=False)
+        self.ennemis = tk.BooleanVar(value=False)              # option à venir (grisée)
+        self.armes_bonus = tk.BooleanVar(value=False)          # option à venir (grisée)
         self.graine = tk.StringVar(value=str(gen.tirer_graine()))
         jeu = gen.trouver_dossier_jeu()
         self.dossier_jeu = tk.StringVar(value=str(jeu) if jeu else "")
@@ -483,10 +497,16 @@ class Application(tk.Tk):
         self.dossier_seeds = dossier_programme() / "seeds"
         self.dernier_resultat = None               # (messages, spoiler, ok) de la dernière génération
 
+        self.maj = None                            # mise à jour disponible (infos GitHub) ou None
+        self.dll_prete = False                     # DLL du randomizer installée et à jour
         self.construire()
+        threading.Thread(target=self.verifier_mise_a_jour, daemon=True).start()
         self.dossier_jeu.trace_add("write", lambda *_: self.actualiser_etat())
+        self.personnage.trace_add("write", lambda *_: self.afficher_liste_armes())
         self.actualiser_etat()
         self.afficher_resultat()
+        if self.dll_prete:                         # sinon on reste sur « Installation »
+            self.onglets.select(self.page_generer)
         barre_titre_sombre(self)
         # molette (Windows) et molette / pavé tactile (Linux) : fait défiler la zone sous le pointeur
         self.bind_all("<MouseWheel>", lambda e: self.molette(e, -1 if e.delta > 0 else 1))
@@ -527,8 +547,9 @@ class Application(tk.Tk):
         entete = ttk.Frame(racine)
         entete.pack(fill="x", pady=(0, 12))
         ttk.Label(entete, text="Randomizer", style="Titre.TLabel").pack(side="left")
-        ttk.Label(entete, text=f"Resident Evil HD Remaster  ·  v{VERSION}",
-                  style="SousTitre.TLabel").pack(side="left", padx=(12, 0), pady=(10, 0))
+        # le sous-titre est placé en dernier : si la fenêtre est étroite, c'est lui qui est raccourci
+        self.sous_titre = ttk.Label(entete, text=f"Resident Evil HD Remaster  ·  v{VERSION}",
+                                    style="SousTitre.TLabel")
         # sélecteur de langue, en haut à droite
         auto = f"{self.t('langue_auto')} ({textes.LANGUES[textes.langue_systeme()]})"
         noms = [auto] + list(textes.LANGUES.values())
@@ -539,17 +560,27 @@ class Application(tk.Tk):
         self.choix_langue.bind("<<ComboboxSelected>>", lambda _: self.changer_langue())
         if SOUS_WINDOWS:                            # sous Linux, pas toujours de police d'emoji
             ttk.Label(entete, text="🌐", style="SousTitre.TLabel").pack(side="right", padx=(0, 6), pady=(8, 0))
+        # bouton de mise à jour, à gauche des langues ; affiché seulement si une version plus récente existe
+        self.bouton_maj = ttk.Button(entete, style="Maj.Accent.TButton", command=self.mettre_a_jour)
+        self.sous_titre.pack(side="left", padx=(12, 0), pady=(10, 0))
+        if self.maj:
+            self.afficher_bouton_maj()
 
         self.onglets = ttk.Notebook(racine)
         self.onglets.pack(fill="both", expand=True)
-        page_jeu = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
-        page_spoiler = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        # Installation d'abord ; « Générer une seed » et « Spoiler » restent grisés tant que la DLL
+        # n'est pas installée et à jour (voir verrouiller_onglets)
+        self.page_install = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        self.page_generer = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        self.page_spoiler = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
         page_aide = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
-        self.onglets.add(page_jeu, text=self.t("onglet_randomizer"))
-        self.onglets.add(page_spoiler, text=self.t("onglet_spoiler"))
+        self.onglets.add(self.page_install, text=self.t("onglet_installation"))
+        self.onglets.add(self.page_generer, text=self.t("onglet_generer"))
+        self.onglets.add(self.page_spoiler, text=self.t("onglet_spoiler"))
         self.onglets.add(page_aide, text=self.t("onglet_aide"))
-        self.construire_randomizer(page_jeu)
-        self.construire_spoiler(page_spoiler)
+        self.construire_installation(self.page_install)
+        self.construire_generation(self.page_generer)
+        self.construire_spoiler(self.page_spoiler)
         self.construire_aide(page_aide)
 
         if not self.donnees:
@@ -576,20 +607,22 @@ class Application(tk.Tk):
         self.actualiser_etat()
         self.afficher_resultat()
 
-    # --- onglet « Randomizer » : de quoi jouer, dans l'ordre (DLL, puis options, puis génération)
-    def construire_randomizer(self, page):
-        # les cartes défilent si l'écran est petit ; le bouton Générer et le journal restent visibles en bas
+    # --- onglet « Installation » : dossier du jeu et DLL (obligatoire avant de générer une seed)
+    def construire_installation(self, page):
         page.columnconfigure(0, weight=1)
         page.rowconfigure(0, weight=1)
         defile = Defilable(page)
         defile.grid(row=0, column=0, sticky="nsew")
         cadre = defile.interieur
-        cadre.columnconfigure(0, weight=1, uniform="col")
-        cadre.columnconfigure(1, weight=1, uniform="col")
+        cadre.columnconfigure(0, weight=1)
+        etapes = self.t("install_etapes")
+        if not SOUS_WINDOWS or os.environ.get("RANDOMIZER_LINUX"):
+            etapes += "\n" + self.t("install_etape_proton")
+        ttk.Label(cadre, text=etapes, wraplength=680, justify="left").grid(row=0, column=0, sticky="w",
+                                                                         pady=(0, 14))
 
-        # --- Jeu (en premier : on installe la DLL avant de générer une seed)
         jeu, j = self.carte(cadre, self.t("carte_jeu"))
-        jeu.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        jeu.grid(row=1, column=0, sticky="nsew")
         j.columnconfigure(0, weight=1)
         ttk.Entry(j, textvariable=self.dossier_jeu).grid(row=0, column=0, sticky="ew")
         ttk.Button(j, text=self.t("parcourir"), command=self.choisir_dossier).grid(row=0, column=1, padx=(8, 0))
@@ -629,9 +662,26 @@ class Application(tk.Tk):
                       justify="left").grid(row=8, column=0, columnspan=2, sticky="w", pady=(4, 0))
             self.regler_option_proton()
 
+        bas = ttk.Frame(page)
+        bas.grid(row=1, column=0, sticky="ew", pady=(14, 0))
+        self.bouton_suivant = ttk.Button(bas, text=self.t("suivant_generer"), style="Accent.TButton",
+                                         command=lambda: self.onglets.select(self.page_generer))
+        self.bouton_suivant.pack(side="right")
+
+    # --- onglet « Générer une seed » : partie, options, puis génération
+    def construire_generation(self, page):
+        # les cartes défilent si l'écran est petit ; le bouton Générer et le journal restent visibles en bas
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        defile = Defilable(page)
+        defile.grid(row=0, column=0, sticky="nsew")
+        cadre = defile.interieur
+        cadre.columnconfigure(0, weight=1, uniform="col")
+        cadre.columnconfigure(1, weight=1, uniform="col")
+
         # --- Partie
         partie, p = self.carte(cadre, self.t("carte_partie"))
-        partie.grid(row=1, column=0, sticky="nsew", padx=(0, 8), pady=(16, 0))
+        partie.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         p.columnconfigure(1, weight=1)
         a_venir = f"  · {self.t('a_venir')}"
         ttk.Label(p, text=self.t("personnage"), style="Carte.TLabel").grid(row=0, column=0, sticky="w")
@@ -649,12 +699,32 @@ class Application(tk.Tk):
 
         # --- Options
         options, o = self.carte(cadre, self.t("carte_options"))
-        options.grid(row=1, column=1, sticky="nsew", padx=(8, 0), pady=(16, 0))
-        ttk.Checkbutton(o, text=self.t("armes_aleatoires"), variable=self.armes).pack(anchor="w")
-        ttk.Label(o, text=self.t("note_armes"), style="Note.TLabel", wraplength=280,
-                  justify="left").pack(anchor="w", padx=(27, 0))
+        options.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        ttk.Checkbutton(o, text=self.t("armes_aleatoires"), variable=self.armes,
+                        command=self.afficher_liste_armes).pack(anchor="w")
+        self.note_armes = ttk.Label(o, text=self.t("note_armes"), style="Note.TLabel", wraplength=280,
+                                    justify="left")
+        self.note_armes.pack(anchor="w", padx=(27, 0))
+        self.liste_armes = ttk.Frame(o, style="Carte.TFrame", borderwidth=0)
+        self.cases_armes = {}
+        for cle, id_arme, perso in gen.ARMES:
+            texte = self.t(cle)
+            if perso:
+                texte += f"  · {self.t('chris_uniquement' if perso == 'Chris' else 'jill_uniquement')}"
+            if id_arme is None:
+                texte += a_venir
+            case = ttk.Checkbutton(self.liste_armes, text=texte, variable=self.armes_cochees[cle])
+            case.pack(anchor="w")
+            self.cases_armes[cle] = (case, id_arme, perso)
+        self.afficher_liste_armes()
         ttk.Checkbutton(o, text=self.t("cles_aleatoires") + a_venir, variable=self.cles,
                         state="disabled").pack(anchor="w", pady=(6, 0))
+        ttk.Checkbutton(o, text=self.t("ennemis_aleatoires") + a_venir, variable=self.ennemis,
+                        state="disabled").pack(anchor="w")
+        ttk.Checkbutton(o, text=self.t("armes_bonus") + a_venir, variable=self.armes_bonus,
+                        state="disabled").pack(anchor="w")
+        ttk.Label(o, text=self.t("note_armes_bonus"), style="Note.TLabel", wraplength=280,
+                  justify="left").pack(anchor="w", padx=(27, 0))
         ttk.Label(o, text=self.t("graine"), style="Carte.TLabel").pack(anchor="w", pady=(14, 4))
         ligne = ttk.Frame(o, style="Carte.TFrame", borderwidth=0)
         ligne.pack(anchor="w", fill="x")
@@ -709,6 +779,22 @@ class Application(tk.Tk):
         self.zone_spoiler.configure(yscrollcommand=defil.set)
         defil.pack(side="right", fill="y")
         self.zone_spoiler.pack(side="left", fill="both", expand=True)
+
+    def afficher_liste_armes(self):
+        """Liste des armes sous « Armes aléatoires » (seulement quand la case est cochée).
+        Une arme dont l'id n'est pas encore connu, ou réservée à l'autre personnage, reste grisée."""
+        if self.armes.get():
+            self.liste_armes.pack(anchor="w", padx=(27, 0), pady=(4, 0), after=self.note_armes)
+        else:
+            self.liste_armes.pack_forget()
+        for case, id_arme, perso in self.cases_armes.values():
+            dispo = id_arme is not None and perso in (None, self.personnage.get())
+            case.state(["!disabled"] if dispo else ["disabled"])
+
+    def armes_choisies(self):
+        """Ids des armes cochées et utilisables (envoyés au générateur)."""
+        return {id_arme for cle, (case, id_arme, perso) in self.cases_armes.items()
+                if id_arme is not None and perso in (None, self.personnage.get()) and self.armes_cochees[cle].get()}
 
     def spoiler_actuel(self):
         """(titre, texte) du spoiler : dernière seed générée, sinon celle installée dans le jeu."""
@@ -831,6 +917,63 @@ class Application(tk.Tk):
         if d:
             self.dossier_jeu.set(str(Path(d)))
 
+    # ------------------------------------------------------------------ mise à jour de l'application
+    def verifier_mise_a_jour(self):
+        """(fil secondaire) Demande à GitHub s'il existe une version plus récente."""
+        mise_a_jour.nettoyer()                 # restes d'une mise à jour précédente
+        info = mise_a_jour.chercher(VERSION)
+        if info:
+            try:
+                self.after(0, lambda: self.signaler_mise_a_jour(info))
+            except (RuntimeError, tk.TclError):    # fenêtre déjà fermée
+                pass
+
+    def signaler_mise_a_jour(self, info):
+        self.maj = info
+        self.afficher_bouton_maj()
+
+    def afficher_bouton_maj(self):
+        self.bouton_maj.configure(text=self.t("maj_disponible", version=self.maj["version"]))
+        self.bouton_maj.state(["!disabled"])
+        if not self.bouton_maj.winfo_ismapped():
+            self.bouton_maj.pack(side="right", padx=(0, 12), pady=(8, 0), before=self.sous_titre)
+
+    def mettre_a_jour(self):
+        info, cible = self.maj, mise_a_jour.programme_actuel()
+        if not cible:                          # script Python : pas de remplacement automatique
+            if messagebox.askyesno(TITRE, self.t("maj_page", version=info["version"], actuelle=VERSION)):
+                webbrowser.open(info["page"] or URL_DEPOT + "/releases/latest")
+            return
+        if not messagebox.askyesno(TITRE, self.t("maj_confirmer", version=info["version"], actuelle=VERSION)):
+            return
+        self.bouton_maj.state(["disabled"])
+        self.bouton_maj.configure(text=self.t("maj_telechargement", pct=0))
+
+        def progres(fraction):
+            self.after(0, lambda: self.bouton_maj.configure(
+                text=self.t("maj_telechargement", pct=int(fraction * 100))))
+
+        def travail():
+            try:
+                nouveau = mise_a_jour.telecharger(info, cible, progres)
+                self.after(0, lambda: self.installer_mise_a_jour(nouveau, cible))
+            except Exception as e:
+                self.after(0, lambda e=e: self.echec_mise_a_jour(e))
+        threading.Thread(target=travail, daemon=True).start()
+
+    def installer_mise_a_jour(self, nouveau, cible):
+        try:
+            mise_a_jour.remplacer_et_relancer(nouveau, cible)
+        except Exception as e:
+            self.echec_mise_a_jour(e)
+            return
+        self.destroy()
+
+    def echec_mise_a_jour(self, erreur):
+        self.afficher_bouton_maj()
+        if messagebox.askyesno(TITRE, self.t("maj_erreur", e=erreur)):
+            webbrowser.open(self.maj.get("page") or URL_DEPOT + "/releases/latest")
+
     def actualiser_etat(self):
         d = Path(self.dossier_jeu.get()) if self.dossier_jeu.get() else None
         if not d or not (d / "bhd.exe").exists():
@@ -840,6 +983,7 @@ class Application(tk.Tk):
             self.badge_version.configure(text="")
             for b in (self.bouton_dll, self.bouton_retirer_dll, self.bouton_retirer_seed, self.case_releve):
                 b.state(["disabled"])
+            self.verrouiller_onglets(False)
             return
         self.case_releve.state(["!disabled"])
         if self._dossier_dinput8 != str(d):
@@ -853,6 +997,8 @@ class Application(tk.Tk):
         seed = gen.seed_installee(d)
         if etranger:
             self.badge_dll.configure(text=self.t("badge_autre_dll"), style="Alerte.TLabel")
+        elif dll_ok and not dll_a_jour(dll, self.dll):
+            self.badge_dll.configure(text=self.t("badge_dll_ancienne"), style="Alerte.TLabel")
         elif dll_ok:
             self.badge_dll.configure(text=self.t("badge_installe"), style="Ok.TLabel")
         else:
@@ -874,6 +1020,21 @@ class Application(tk.Tk):
         self.bouton_dll.state(["!disabled"] if self.dll and not etranger else ["disabled"])
         self.bouton_retirer_dll.state(["!disabled"] if dll_ok and not etranger else ["disabled"])
         self.bouton_retirer_seed.state(["!disabled"] if seed else ["disabled"])
+        self.verrouiller_onglets(dll_ok and not etranger and dll_a_jour(dll, self.dll))
+
+    def verrouiller_onglets(self, dll_prete):
+        """« Générer une seed » : seulement avec notre DLL installée et à jour.
+        « Spoiler » : en plus, seulement s'il y a une seed (générée ou installée) dont on a la liste."""
+        self.dll_prete = dll_prete
+        spoiler = dll_prete and self.spoiler_actuel()[1] is not None
+        courant = self.onglets.select()            # avant de griser : Tk changerait d'onglet tout seul
+        if not dll_prete and courant in (str(self.page_generer), str(self.page_spoiler)):
+            self.onglets.select(self.page_install)
+        elif not spoiler and courant == str(self.page_spoiler):
+            self.onglets.select(self.page_generer)
+        self.onglets.tab(self.page_generer, state="normal" if dll_prete else "disabled")
+        self.onglets.tab(self.page_spoiler, state="normal" if spoiler else "disabled")
+        self.bouton_suivant.state(["!disabled"] if dll_prete else ["disabled"])
 
     def basculer_releve(self):
         d = Path(self.dossier_jeu.get())
@@ -971,13 +1132,16 @@ class Application(tk.Tk):
         self.ecrire(self.t("generation"), effacer=True)
         messages, spoiler = [], []
         langue = self.langue.get()
+        armes = self.armes_choisies()
+        if self.armes.get() and not armes:         # « Armes aléatoires » sans aucune arme cochée
+            messages.append(self.t("aucune_arme"))
 
         def travail():
             try:
                 ok = gen.produire(graine, self.armes.get(), self.donnees, self.dossier_seeds,
                                   installer, self.dossier_jeu.get() or None, messages.append,
                                   personnage=self.personnage.get(), difficulte=self.difficulte.get(),
-                                  langue=langue, dire_spoiler=spoiler.append)
+                                  langue=langue, dire_spoiler=spoiler.append, armes_choisies=armes)
             except Exception as e:  # on affiche l'erreur plutôt que de fermer l'application
                 messages.append(textes.tr("erreur", langue, e=e))
                 ok = False
