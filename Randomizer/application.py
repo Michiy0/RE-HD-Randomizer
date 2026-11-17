@@ -23,9 +23,13 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.8"
+VERSION = "0.8.1"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
+# Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
+AUTEURS = [("Jojo / Michiyo", "Delage Jordan", "https://github.com/Michiy0")]
+# (pseudo, nom complet, petit mot à côté du pseudo — non traduit)
+TESTEURS = [("Nico", "De Oliveira Gomes Nicolas", "Number One Chris Fan")]
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
 TITRE = f"Randomizer RE HD Remaster v{VERSION}"
 SOUS_WINDOWS = sys.platform == "win32"
@@ -145,6 +149,7 @@ COULEURS = {
     "survol": "#313643",
     "texte": "#e7e9ee",
     "discret": "#8a909c",
+    "lien": "#7fb2ff",        # liens cliquables (onglet Info)
     "grise": "#555b66",
     "accent": "#b3262e",      # rouge sombre
     "accent_survol": "#cf3540",
@@ -267,6 +272,10 @@ def appliquer_style(racine):
     s.configure("SousTitre.TLabel", font=(POLICE, 10), foreground=c["discret"])
     s.configure("Section.TLabel", background=c["carte"], font=(POLICE, 9, "bold"), foreground=c["discret"])
     s.configure("Note.TLabel", background=c["carte"], font=(POLICE, 9), foreground=c["discret"])
+    s.configure("Nom.TLabel", background=c["carte"], font=(POLICE, 11, "bold"), foreground=c["texte"])
+    s.configure("Mot.TLabel", background=c["carte"], font=(POLICE, 10), foreground=c["discret"])
+    s.configure("Emoji.TLabel", background=c["carte"], font=("Segoe UI Emoji", 13), foreground=c["texte"])
+    s.configure("Lien.TLabel", background=c["carte"], font=(POLICE, 10, "underline"), foreground=c["lien"])
     for nom, couleur in (("Ok", c["ok"]), ("Neutre", c["discret"]), ("Alerte", c["alerte"])):
         s.configure(f"{nom}.TLabel", background=c["carte"], foreground=couleur, font=(POLICE, 10))
 
@@ -579,10 +588,13 @@ class Application(tk.Tk):
         self.onglets.add(self.page_generer, text=self.t("onglet_generer"))
         self.onglets.add(self.page_spoiler, text=self.t("onglet_spoiler"))
         self.onglets.add(page_aide, text=self.t("onglet_aide"))
+        page_info = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        self.onglets.add(page_info, text=self.t("onglet_info"))
         self.construire_installation(self.page_install)
         self.construire_generation(self.page_generer)
         self.construire_spoiler(self.page_spoiler)
         self.construire_aide(page_aide)
+        self.construire_info(page_info)
 
         if not self.donnees:
             self.ecrire(self.t("donnees_absentes", fichier=gen.FICHIER_PAR_DEFAUT))
@@ -811,6 +823,60 @@ class Application(tk.Tk):
             if fichier.exists():
                 return self.t("spoiler_installe"), fichier.read_text(encoding="utf-8")
         return None, None
+
+    # --- onglet « Info » : crédits et liens
+    def lien(self, parent, texte, url):
+        """Texte cliquable qui ouvre une page dans le navigateur."""
+        l = ttk.Label(parent, text=texte, style="Lien.TLabel", cursor="hand2")
+        l.bind("<Button-1>", lambda _: webbrowser.open(url))
+        return l
+
+    def construire_info(self, page):
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        defile = Defilable(page)
+        defile.grid(row=0, column=0, sticky="nsew")
+        cadre = defile.interieur
+        cadre.columnconfigure(0, weight=1)
+
+        projet, p = self.carte(cadre, self.t("carte_projet"))
+        projet.grid(row=0, column=0, sticky="nsew")
+        ttk.Label(p, text=f"Randomizer Resident Evil HD Remaster  ·  v{VERSION}", style="Nom.TLabel"
+                  ).pack(anchor="w")
+        ttk.Label(p, text=self.t("info_description"), style="Carte.TLabel", wraplength=660,
+                  justify="left").pack(anchor="w", pady=(4, 6))
+        self.lien(p, "→  " + self.t("lien_projet"), URL_DEPOT).pack(anchor="w")
+        ttk.Label(p, text=self.t("info_licence"), style="Note.TLabel").pack(anchor="w", pady=(8, 0))
+        ttk.Label(p, text=self.t("info_fan"), style="Note.TLabel", wraplength=660, justify="left"
+                  ).pack(anchor="w")
+
+        auteur, a = self.carte(cadre, self.t("carte_auteur"))
+        auteur.grid(row=1, column=0, sticky="nsew", pady=(16, 0))
+        for nom, nom_complet, url in AUTEURS:
+            ttk.Label(a, text=nom, style="Nom.TLabel").pack(anchor="w")
+            ttk.Label(a, text=nom_complet, style="Carte.TLabel").pack(anchor="w")
+            if url:
+                self.lien(a, "→  " + self.t("lien_profil"), url).pack(anchor="w", pady=(2, 0))
+
+        tests, te = self.carte(cadre, self.t("carte_tests"))
+        tests.grid(row=2, column=0, sticky="nsew", pady=(16, 0))
+        for nom, nom_complet, mot in TESTEURS:
+            ligne = ttk.Frame(te, style="Carte.TFrame", borderwidth=0)
+            ligne.pack(anchor="w")
+            ttk.Label(ligne, text=nom, style="Nom.TLabel").pack(side="left")
+            if mot:
+                ttk.Label(ligne, text=f"« {mot} »", style="Mot.TLabel").pack(side="left", padx=(10, 0), pady=(1, 0))
+                if SOUS_WINDOWS:                      # sous Linux, pas toujours de police d'emoji
+                    ttk.Label(ligne, text="👊", style="Emoji.TLabel").pack(side="left", padx=(6, 0))
+            ttk.Label(te, text=nom_complet, style="Carte.TLabel").pack(anchor="w", pady=(0, 6))
+
+        merci, m = self.carte(cadre, self.t("carte_remerciements"))
+        merci.grid(row=3, column=0, sticky="nsew", pady=(16, 0))
+        ttk.Label(m, text=self.t("info_bhdtool"), style="Carte.TLabel", wraplength=660, justify="left"
+                  ).pack(anchor="w")
+        self.lien(m, "→  github.com/eleval/BhdTool", "https://github.com/eleval/BhdTool").pack(anchor="w", pady=(2, 8))
+        ttk.Label(m, text=self.t("info_inspiration"), style="Carte.TLabel", wraplength=660, justify="left"
+                  ).pack(anchor="w")
 
     # --- onglet « Aider le projet » : mode relevé et avancement des relevés
     def construire_aide(self, page):

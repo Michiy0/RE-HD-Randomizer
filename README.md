@@ -29,7 +29,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
 
-## État : version 0.8 (test)
+## État : version 0.8.1 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -128,7 +128,7 @@ Dans l'application : **Désinstaller la DLL** (sur Steam Deck, retire aussi l'op
 
 ## Utilisation
 
-L'application a quatre onglets, et un sélecteur de langue en haut à droite (« Automatique » = langue du
+L'application a cinq onglets, et un sélecteur de langue en haut à droite (« Automatique » = langue du
 système, anglais sinon).
 
 - **Installation** — dossier du jeu, état du randomizer et de la seed installée, installer / mettre à
@@ -143,6 +143,7 @@ système, anglais sinon).
 - **Spoiler** — débloqué dès qu'il y a une seed : la liste complète des changements (« pièce : objet
   d'origine → nouvel objet »), cachée tant qu'on ne coche pas *Afficher le spoiler*.
 - **Aider le projet** — le mode relevé et les barres d'avancement (voir plus bas).
+- **Info** — les crédits (auteur, testeurs, remerciements) et le lien vers cette page.
 
 Les options marquées « à venir » (clés, ennemis, armes bonus, autres armes…) sont visibles mais grisées.
 
@@ -208,7 +209,7 @@ s'est passé.
 donnees_randomizer_RE1.xlsx   données : pièces, objets, emplacements, pièces relevées, bonus
 DLL/                          la DLL (randomizer.c, xinput1_4.def) et ses scripts de compilation
 Randomizer/
-  application.py              l'application (4 onglets, 7 langues)
+  application.py              l'application (5 onglets, 7 langues)
   mise_a_jour.py              mise à jour automatique depuis les Releases GitHub
   generateur_seed.py          génération des seeds (aussi en ligne de commande)
   importer_journal.py         importe les journaux de relevés dans le tableur
@@ -241,6 +242,8 @@ preparer_publication.py       prépare le dépôt, le zip Windows et l'archive L
 
 ## Crédits
 
+- **Auteur** : **Jojo / Michiyo** (Delage Jordan) — [profil GitHub](https://github.com/Michiy0).
+- **Tests et relevés des objets** : **Nico** (De Oliveira Gomes Nicolas) — « Number One Chris Fan » 👊
 - **[BhdTool](https://github.com/eleval/BhdTool)** (eleval, GPLv3) : son `rooms.json` fournit les noms et liaisons des pièces, et
   l'outil aide beaucoup pour les relevés (voir [Aider le projet](#aider-le-projet)).
 - Inspiré des randomizers de la communauté (BioRand, ancien randomizer de Benn Powell).
@@ -280,7 +283,7 @@ or strategies.
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
 
-### Status: version 0.8 (test)
+### Status: version 0.8.1 (test)
 
 | Supported | Coming |
 |---|---|
@@ -344,7 +347,7 @@ option). “Remove the installed seed” only removes the seed: without a seed, 
 
 ### Usage
 
-The app has four tabs, and a language selector at the top right (“Automatic” = system language, English
+The app has five tabs, and a language selector at the top right (“Automatic” = system language, English
 otherwise).
 
 - **Installation** — game folder, randomizer and installed seed status, install / update / uninstall the
@@ -358,6 +361,7 @@ otherwise).
 - **Spoiler** — unlocked as soon as there is a seed: the full list of changes (“room: original item → new
   item”), hidden until you tick *Show spoiler*.
 - **Help the project** — survey mode and the progress bars (see below).
+- **Info** — the credits (author, testers, thanks) and a link to this page.
 
 Options marked “coming soon” (keys, enemies, bonus weapons, other weapons…) are visible but greyed out.
 
@@ -417,7 +421,7 @@ Open an [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues) and attach `
 donnees_randomizer_RE1.xlsx   data: rooms, items, locations, surveyed rooms, bonus
 DLL/                          the DLL (randomizer.c, xinput1_4.def) and its build scripts
 Randomizer/
-  application.py              the app (4 tabs, 7 languages)
+  application.py              the app (5 tabs, 7 languages)
   mise_a_jour.py              automatic update from the GitHub Releases
   generateur_seed.py          seed generation (also command line)
   importer_journal.py         imports survey logs into the spreadsheet
@@ -452,6 +456,8 @@ The code, file names and command-line options are in French (the project's worki
 
 ### Credits
 
+- **Author**: **Jojo / Michiyo** (Delage Jordan) — [GitHub profile](https://github.com/Michiy0).
+- **Testing and item surveys**: **Nico** (De Oliveira Gomes Nicolas) — “Number One Chris Fan” 👊
 - **[BhdTool](https://github.com/eleval/BhdTool)** (eleval, GPLv3): its `rooms.json` provides the room names and connections, and
   the tool is a great help for surveys (see [Help the project](#help-the-project)).
 - Inspired by community randomizers (BioRand, Benn Powell's former randomizer).
