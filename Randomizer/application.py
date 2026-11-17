@@ -22,7 +22,7 @@ import generateur_seed as gen
 import progression
 import textes
 
-VERSION = "0.6.1"
+VERSION = "0.6.2"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
@@ -30,6 +30,8 @@ TITRE = f"Randomizer RE HD Remaster v{VERSION}"
 SOUS_WINDOWS = sys.platform == "win32"
 # Le jeu tourne sous Proton sur Linux / Steam Deck : la DLL doit être préférée à celle de Proton.
 OPTION_PROTON = 'WINEDLLOVERRIDES="xinput1_4=n,b" %command%'
+# avec BhdTool (ou un autre mod en dinput8.dll), Proton doit charger aussi ce dinput8.dll
+OPTION_PROTON_DINPUT8 = 'WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%'
 
 
 def dossier_programme():
@@ -474,6 +476,9 @@ class Application(tk.Tk):
         self.installer = tk.BooleanVar(value=True)
         self.afficher_spoiler = tk.BooleanVar(value=False)
         self.releve = tk.BooleanVar(value=False)
+        self.proton_dinput8 = tk.BooleanVar(value=False)      # option de lancement : charger aussi dinput8.dll
+        self.option_proton = tk.StringVar(value=OPTION_PROTON)
+        self._dossier_dinput8 = None                          # dossier pour lequel la case a été réglée
         self.etat_jeu = tk.StringVar()             # résumé texte de l'état (utilisé par les tests)
         self.dossier_seeds = dossier_programme() / "seeds"
         self.dernier_resultat = None               # (messages, spoiler, ok) de la dernière génération
@@ -612,14 +617,17 @@ class Application(tk.Tk):
             # Sous Linux / Steam Deck, le jeu passe par Proton : l'option de lancement fait charger notre DLL
             ttk.Label(j, text=self.t("proton_titre"), style="Carte.TLabel").grid(
                 row=5, column=0, columnspan=2, sticky="w", pady=(12, 2))
-            option = ttk.Entry(j, font=(POLICE_MONO, 10))
-            option.insert(0, OPTION_PROTON)
+            option = ttk.Entry(j, font=(POLICE_MONO, 10), textvariable=self.option_proton)
             option.state(["readonly"])
             option.grid(row=6, column=0, sticky="ew")
             ttk.Button(j, text=self.t("copier"), command=self.copier_option_proton).grid(
                 row=6, column=1, padx=(8, 0))
+            self.case_dinput8 = ttk.Checkbutton(j, variable=self.proton_dinput8,
+                                                command=self.regler_option_proton)
+            self.case_dinput8.grid(row=7, column=0, columnspan=2, sticky="w", pady=(6, 0))
             ttk.Label(j, text=self.t("proton_note"), style="Note.TLabel", wraplength=640,
-                      justify="left").grid(row=7, column=0, columnspan=2, sticky="w", pady=(4, 0))
+                      justify="left").grid(row=8, column=0, columnspan=2, sticky="w", pady=(4, 0))
+            self.regler_option_proton()
 
         # --- Partie
         partie, p = self.carte(cadre, self.t("carte_partie"))
@@ -834,6 +842,10 @@ class Application(tk.Tk):
                 b.state(["disabled"])
             return
         self.case_releve.state(["!disabled"])
+        if self._dossier_dinput8 != str(d):
+            self._dossier_dinput8 = str(d)
+            self.proton_dinput8.set((d / "dinput8.dll").exists())
+        self.regler_option_proton()
         self.releve.set(lire_option_ini(d, "Releve") == "1")
         dll = d / "xinput1_4.dll"
         dll_ok = dll.exists()
@@ -917,9 +929,18 @@ class Application(tk.Tk):
             messagebox.showerror(TITRE, self.t("err_copier_dll", e=e))
         self.actualiser_etat()
 
+    def regler_option_proton(self):
+        """Ligne à copier selon la case dinput8, et mention « détecté » si le fichier est là."""
+        self.option_proton.set(OPTION_PROTON_DINPUT8 if self.proton_dinput8.get() else OPTION_PROTON)
+        if hasattr(self, "case_dinput8"):
+            d = Path(self.dossier_jeu.get()) if self.dossier_jeu.get() else None
+            detecte = d is not None and (d / "dinput8.dll").exists()
+            self.case_dinput8.configure(text=self.t("proton_dinput8")
+                                        + (self.t("proton_detecte") if detecte else ""))
+
     def copier_option_proton(self):
         self.clipboard_clear()
-        self.clipboard_append(OPTION_PROTON)
+        self.clipboard_append(self.option_proton.get())
         self.ecrire(self.t("copie_ok"), effacer=True)
 
     def ouvrir_journal(self):

@@ -16,6 +16,9 @@ SUR STEAM DECK
    Resident Evil → Propriétés → Options de lancement → colle :
        WINEDLLOVERRIDES="xinput1_4=n,b" %command%
    (à faire une seule fois)
+   Avec BhdTool (ou un autre mod en dinput8.dll) : coche « Ajouter dinput8.dll » avant de
+   copier (elle est cochée d'office si le fichier est détecté). La ligne devient :
+       WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%
 7. Clique « Générer la seed », puis lance le jeu : NOUVELLE PARTIE, CHRIS, NORMAL.
 
 VÉRIFIER QUE ÇA MARCHE

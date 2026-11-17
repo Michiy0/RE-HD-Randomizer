@@ -2,7 +2,7 @@
 Prépare une version publiable du projet dans le dossier publication/ :
 
   publication/depot/                  les fichiers à mettre sur GitHub (et seulement eux)
-  publication/RandomizerREHD-v<x>.zip à joindre à une « Release » GitHub ou à envoyer aux testeurs
+  publication/RandomizerREHD-v<x>-windows.zip à joindre à une « Release » GitHub ou à envoyer aux testeurs
                                       (RandomizerREHD.exe + LISEZ-MOI.txt)
 
 Seuls les fichiers de la liste FICHIERS sont copiés : sauvegardes, fichiers du jeu, outils de tiers et
@@ -162,7 +162,7 @@ def main():
     print(f"Dépôt prêt : {DEPOT} ({len(FICHIERS)} fichiers)")
 
     exe = construire_exe(DEPOT)
-    archive = SORTIE / f"RandomizerREHD-v{VERSION}.zip"
+    archive = SORTIE / f"RandomizerREHD-v{VERSION}-windows.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(exe, "RandomizerREHD.exe")
         z.write(ICI / "LISEZ-MOI_testeur.txt", "LISEZ-MOI.txt")

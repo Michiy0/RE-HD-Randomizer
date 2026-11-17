@@ -27,7 +27,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
 
-## État : version 0.6.1 (test)
+## État : version 0.6.2 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -74,7 +74,7 @@ Armes bonus : liste à compléter. Mis à jour le 17/11/2026.
 
 ### Windows
 
-1. Télécharge `RandomizerREHD-v….zip` dans les **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)**
+1. Télécharge `RandomizerREHD-v…-windows.zip` dans les **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)**
    et extrais-le où tu veux.
 2. Lance `RandomizerREHD.exe`. Le dossier du jeu est trouvé automatiquement (sinon : **Parcourir…**).
 3. Clique **Installer la DLL** (une seule fois).
@@ -101,6 +101,8 @@ toujours avec Proton.
    ```
    WINEDLLOVERRIDES="xinput1_4=n,b" %command%
    ```
+   Si tu utilises **BhdTool** (ou un autre mod en `dinput8.dll`), coche *Ajouter dinput8.dll* (cochée d'office
+   s'il est détecté) : la ligne devient `WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%`.
 4. **Générer la seed**, puis lance le jeu.
 
 > Le fonctionnement de la DLL dans le jeu sous Proton n'a pas encore été confirmé sur un vrai Steam
@@ -249,7 +251,7 @@ or strategies.
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
 
-### Status: version 0.6.1 (test)
+### Status: version 0.6.2 (test)
 
 | Supported | Coming |
 |---|---|
@@ -269,7 +271,7 @@ game, for each character and difficulty, updated with every version.
 
 **Windows**
 
-1. Download `RandomizerREHD-v….zip` from the
+1. Download `RandomizerREHD-v…-windows.zip` from the
    **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)** and extract it anywhere.
 2. Run `RandomizerREHD.exe`. The game folder is found automatically (otherwise: **Browse…**).
 3. Click **Install the DLL** (once).
@@ -295,6 +297,8 @@ The app has a **native Linux** version (no Proton needed for it); the game itsel
    ```
    WINEDLLOVERRIDES="xinput1_4=n,b" %command%
    ```
+   If you use **BhdTool** (or another mod in `dinput8.dll`), tick *Also load dinput8.dll* (ticked
+   automatically when it is found): the line becomes `WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%`.
 4. **Generate seed**, then start the game.
 
 > The DLL has not been confirmed in-game under Proton on a real Steam Deck yet: feedback (**Game log**
