@@ -22,7 +22,7 @@ import generateur_seed as gen
 import progression
 import textes
 
-VERSION = "0.6"
+VERSION = "0.6.1"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
@@ -295,7 +295,7 @@ def appliquer_style(racine):
         ("Vertical.Scrollbar.thumb", {"expand": "1", "sticky": "nswe"})]})])
     s.configure("Mince.Vertical.TScrollbar", background=c["survol"], troughcolor=c["journal"], borderwidth=0,
                 bordercolor=c["journal"], lightcolor=c["survol"], darkcolor=c["survol"], arrowsize=8,
-                gripcount=0, width=8)
+                gripcount=0, width=8 if SOUS_WINDOWS else 14)
     s.map("Mince.Vertical.TScrollbar", background=[("active", "#4a505c")],
           lightcolor=[("active", "#4a505c")], darkcolor=[("active", "#4a505c")])
     # onglets : plats, sans pointillés de focus, l'onglet actif prend la couleur des cartes
@@ -395,6 +395,36 @@ def enregistrer_langue(code):
         pass                        # préférence perdue, sans gravité
 
 
+class Defilable(ttk.Frame):
+    """Zone qui défile verticalement quand son contenu dépasse (petits écrans, Steam Deck 1280×800).
+    Le contenu se place dans .interieur ; la barre n'apparaît que si elle sert."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.toile = tk.Canvas(self, bg=COULEURS["fond"], highlightthickness=0, borderwidth=0,
+                               yscrollincrement=24)
+        self.barre = ttk.Scrollbar(self, orient="vertical", style="Mince.Vertical.TScrollbar",
+                                   command=self.toile.yview)
+        self.interieur = ttk.Frame(self.toile)
+        self._fenetre = self.toile.create_window(0, 0, window=self.interieur, anchor="nw")
+        self.toile.configure(yscrollcommand=self._regler_barre)
+        self.toile.pack(side="left", fill="both", expand=True)
+        self.interieur.bind("<Configure>", lambda _: self.toile.configure(scrollregion=self.toile.bbox("all")))
+        self.toile.bind("<Configure>", lambda e: self.toile.itemconfigure(self._fenetre, width=e.width))
+
+    def _regler_barre(self, debut, fin):
+        self.barre.set(debut, fin)
+        utile = float(debut) > 0 or float(fin) < 1
+        if utile and not self.barre.winfo_ismapped():
+            self.barre.pack(side="right", fill="y", padx=(6, 0), before=self.toile)
+        elif not utile and self.barre.winfo_ismapped():
+            self.barre.pack_forget()
+
+    def defiler(self, pas):
+        if self.toile.yview() != (0.0, 1.0):
+            self.toile.yview_scroll(pas, "units")
+
+
 def barre_titre_sombre(fenetre):
     """Barre de titre sombre sous Windows 10/11 (sans effet ailleurs)."""
     try:
@@ -413,7 +443,10 @@ class Application(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(TITRE)
-        self.minsize(740, 760)
+        # taille adaptée à l'écran : le Steam Deck (1280×800, barre des tâches comprise) laisse ~720 px
+        largeur_ecran, hauteur_ecran = self.winfo_screenwidth(), self.winfo_screenheight()
+        self.minsize(640, 480)
+        self.geometry(f"{min(780, largeur_ecran - 40)}x{min(880, hauteur_ecran - 80)}")
         icone = trouver_ressource("icone.ico" if SOUS_WINDOWS else "icone.png", ("",))
         if icone:
             try:
@@ -450,6 +483,20 @@ class Application(tk.Tk):
         self.actualiser_etat()
         self.afficher_resultat()
         barre_titre_sombre(self)
+        # molette (Windows) et molette / pavé tactile (Linux) : fait défiler la zone sous le pointeur
+        self.bind_all("<MouseWheel>", lambda e: self.molette(e, -1 if e.delta > 0 else 1))
+        self.bind_all("<Button-4>", lambda e: self.molette(e, -1))
+        self.bind_all("<Button-5>", lambda e: self.molette(e, 1))
+
+    def molette(self, evenement, sens):
+        w = self.winfo_containing(evenement.x_root, evenement.y_root)
+        while w is not None:
+            if isinstance(w, (tk.Text, ttk.Combobox)):   # ils défilent déjà tout seuls
+                return
+            if isinstance(w, Defilable):
+                w.defiler(3 * sens)
+                return
+            w = w.master
 
     def t(self, cle, **valeurs):
         """Texte dans la langue choisie."""
@@ -525,7 +572,13 @@ class Application(tk.Tk):
         self.afficher_resultat()
 
     # --- onglet « Randomizer » : de quoi jouer, dans l'ordre (DLL, puis options, puis génération)
-    def construire_randomizer(self, cadre):
+    def construire_randomizer(self, page):
+        # les cartes défilent si l'écran est petit ; le bouton Générer et le journal restent visibles en bas
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        defile = Defilable(page)
+        defile.grid(row=0, column=0, sticky="nsew")
+        cadre = defile.interieur
         cadre.columnconfigure(0, weight=1, uniform="col")
         cadre.columnconfigure(1, weight=1, uniform="col")
 
@@ -604,8 +657,8 @@ class Application(tk.Tk):
                   justify="left").pack(anchor="w", pady=(6, 0))
 
         # --- Actions
-        boutons = ttk.Frame(cadre)
-        boutons.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(18, 0))
+        boutons = ttk.Frame(page)
+        boutons.grid(row=1, column=0, sticky="ew", pady=(14, 0))
         self.bouton_generer = ttk.Button(boutons, text=self.t("generer"), style="Accent.TButton",
                                          command=self.generer)
         self.bouton_generer.pack(side="left")
@@ -615,10 +668,9 @@ class Application(tk.Tk):
                    command=self.ouvrir_seeds).pack(side="right")
 
         # --- Journal de l'application
-        zone = tk.Frame(cadre, bg=COULEURS["bord"], padx=1, pady=1)
-        zone.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
-        cadre.rowconfigure(3, weight=1)
-        self.journal = tk.Text(zone, width=1, height=7, wrap="word", state="disabled", font=self.police_texte(),
+        zone = tk.Frame(page, bg=COULEURS["bord"], padx=1, pady=1)
+        zone.grid(row=2, column=0, sticky="nsew", pady=(12, 0))
+        self.journal = tk.Text(zone, width=1, height=5, wrap="word", state="disabled", font=self.police_texte(),
                                bg=COULEURS["journal"], fg=COULEURS["texte"], insertbackground=COULEURS["texte"],
                                selectbackground=COULEURS["accent"], relief="flat", borderwidth=0,
                                padx=12, pady=10, highlightthickness=0)
@@ -663,7 +715,12 @@ class Application(tk.Tk):
         return None, None
 
     # --- onglet « Aider le projet » : mode relevé et avancement des relevés
-    def construire_aide(self, cadre):
+    def construire_aide(self, page):
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        defile = Defilable(page)
+        defile.grid(row=0, column=0, sticky="nsew")
+        cadre = defile.interieur
         cadre.columnconfigure(0, weight=1)
 
         releve, r = self.carte(cadre, self.t("carte_releve"))

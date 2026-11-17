@@ -27,7 +27,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
 
-## État : version 0.6 (test)
+## État : version 0.6.1 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -249,7 +249,7 @@ or strategies.
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
 
-### Status: version 0.6 (test)
+### Status: version 0.6.1 (test)
 
 | Supported | Coming |
 |---|---|
