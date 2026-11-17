@@ -32,7 +32,9 @@
 #define TAILLE_BHD_EXE  9640360u             /* seule version prise en charge */
 #define BASE_JEU        0x400000u            /* bhd.exe n'utilise pas l'ASLR */
 #define ADR_LECTURE     (BASE_JEU + 0x1512EDu)
+#ifndef ADR_PTR_PARTIE
 #define ADR_PTR_PARTIE  (BASE_JEU + 0x8F2F28u)
+#endif
 #define OFF_ZONE        0xE472Cu
 #define OFF_PIECE       0xE4730u
 
@@ -49,6 +51,7 @@ static Emplacement g_seed[MAX_EMPLACEMENTS];
 static int   g_nb;
 static long  g_graine = -1;
 static int   g_armes = -1;               /* -1 inconnu, 0 non, 1 oui */
+static int   g_visible_seed;              /* objets_visibles = true dans la seed */
 
 static char  g_dossier[MAX_PATH];        /* dossier du jeu, avec la barre oblique finale */
 static char  g_journal[MAX_PATH];
@@ -131,6 +134,8 @@ static int charger_seed(const char *chemin)
         } else if (strstr(ligne, "graine =")) {
             DWORD v[1];
             if (lire_nombres(ligne, v, 1) == 1) g_graine = (long)v[0];
+        } else if (strstr(ligne, "objets_visibles =")) {
+            g_visible_seed = strstr(ligne, "true") ? 1 : 0;
         } else if (strstr(ligne, "armes_aleatoires =")) {
             g_armes = strstr(ligne, "true") ? 1 : (strstr(ligne, "false") ? 0 : -1);
         }
@@ -205,6 +210,121 @@ static void traiter_objet(DWORD structure)
                 piece, (unsigned long)(courant >> 16), (unsigned long)(courant & 0xFFFF), piece,
                 valeurs[0], valeurs[1], valeurs[2], valeurs[3],
                 valeurs[4], valeurs[5], valeurs[6], valeurs[7]);
+    }
+}
+
+/* ----------------------------------------- objets visibles (Visible=1 dans randomizer.ini)
+ *
+ * Trouvé le 17/11/2026 dans le code du jeu : chaque pièce place ses objets en appelant
+ * bhd.exe+819E0 (« SpawnItem ») avec, sur la pile : +4 = id, +8 = position, +0C = angle, +10 = quantité,
+ * +18 = numéro de l'événement de la pièce (room\aev). Cette fonction crée le modèle 3D posé par terre à partir
+ * de l'id (bhd.exe+E77F0), puis écrit id et quantité dans l'événement (bhd.exe+802E0). En remplaçant l'id et
+ * la quantité À L'ENTRÉE de la fonction, le jeu crée lui-même le bon modèle et le bon objet à ramasser.
+ * L'emplacement est reconnu comme au ramassage : pièce + zone de ramassage de l'événement (+0x10..+0x2C). */
+#ifndef ADR_SPAWN
+#define ADR_SPAWN       (BASE_JEU + 0x819E0u)
+#endif
+#ifndef ADR_SCENE
+#define ADR_SCENE       (BASE_JEU + 0x8F2FC8u)   /* objet « scène » ; +0x3A0 = liste des événements */
+#endif
+static int g_visible;
+
+static const Emplacement *chercher_emplacement(DWORD piece, const DWORD *valeurs)
+{
+    int i;
+    for (i = 0; i < g_nb; i++)
+        if (g_seed[i].piece == piece && memcmp(g_seed[i].empreinte, valeurs, 8 * sizeof(DWORD)) == 0)
+            return &g_seed[i];
+    return NULL;
+}
+
+/* Le modèle 3D d'un objet posé (arc\model\item\iNNNp.arc, NNN = id sur 3 chiffres) n'est chargé que s'il
+ * figure dans la liste de ressources de la pièce. Ces listes sont dans une table modifiable du jeu : une
+ * table par zone (1 à 5), une entrée par pièce, qui pointe vers une liste de noms terminée par 0
+ * (ex. pièce 105 : pl02, wep03, em15, i015p, i069p, i068p…). Sans le modèle, le jeu plante en cherchant
+ * nativePC\model\item\iNNN\iNNNp.mod (test du 17/11/2026). Au lancement, on ajoute donc à chaque pièce les
+ * modèles des objets que la seed y place ; un objet sans fichier de modèle n'est pas remplacé par terre
+ * (seulement au ramassage, comme avant). */
+static const struct { DWORD table, dernier; } g_tables_pieces[5] = {
+    { BASE_JEU + 0x8B7718u, 0x1C }, { BASE_JEU + 0x8B7A00u, 0x1C }, { BASE_JEU + 0x8B7C90u, 0x1A },
+    { BASE_JEU + 0x8B7E48u, 0x12 }, { BASE_JEU + 0x8B8090u, 0x15 } };
+static char g_noms_modeles[MAX_EMPLACEMENTS][8];
+static BYTE g_modele_ok[MAX_EMPLACEMENTS];
+
+static int liste_contient(const DWORD *liste, int n, const char *nom)
+{
+    int k;
+    for (k = 0; k < n; k++)
+        if (lisible((void *)liste[k], 8, 0) && lstrcmpiA((const char *)liste[k], nom) == 0) return 1;
+    return 0;
+}
+
+static void ajouter_modeles(void)
+{
+    int i, j, pieces = 0, ajouts = 0, sans_modele = 0;
+    for (i = 0; i < g_nb; i++) {
+        DWORD piece = g_seed[i].piece, zone = piece >> 8, salle = piece & 0xFF, *case_table, *ancienne, *neuve;
+        int n = 0, nouveaux = 0, deja_vue = 0;
+        for (j = 0; j < i; j++) if (g_seed[j].piece == piece) { deja_vue = 1; break; }
+        if (deja_vue) continue;                         /* une seule fois par pièce */
+        if (zone < 1 || zone > 5 || salle > g_tables_pieces[zone - 1].dernier) continue;
+        case_table = (DWORD *)(g_tables_pieces[zone - 1].table + salle * 4);
+        if (!lisible(case_table, 4, 1)) continue;
+        ancienne = (DWORD *)*case_table;
+        if (ancienne) while (n < 256 && lisible(&ancienne[n], 4, 0) && ancienne[n]) n++;
+        neuve = (DWORD *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (n + 64 + 1) * sizeof(DWORD));
+        if (!neuve) continue;
+        if (n) memcpy(neuve, ancienne, n * sizeof(DWORD));
+        for (j = i; j < g_nb; j++) {                    /* tous les emplacements de cette pièce */
+            char chemin[MAX_PATH];
+            if (g_seed[j].piece != piece) continue;
+            _snprintf(g_noms_modeles[j], sizeof g_noms_modeles[j], "i%03lup", (unsigned long)g_seed[j].id);
+            _snprintf(chemin, MAX_PATH, "%snativePC\\arc\\model\\item\\%s.arc", g_dossier, g_noms_modeles[j]);
+            if (GetFileAttributesA(chemin) == INVALID_FILE_ATTRIBUTES) { sans_modele++; continue; }
+            g_modele_ok[j] = 1;
+            if (liste_contient(neuve, n + nouveaux, g_noms_modeles[j]) || nouveaux >= 64) continue;
+            neuve[n + nouveaux++] = (DWORD)g_noms_modeles[j];
+        }
+        if (nouveaux) {
+            *case_table = (DWORD)neuve;                 /* la table est dans .data : modifiable */
+            pieces++;
+            ajouts += nouveaux;
+        } else {
+            HeapFree(GetProcessHeap(), 0, neuve);
+        }
+    }
+    journal("Objets visibles : %d modele(s) ajoute(s) dans %d piece(s) ; %d emplacement(s) sans modele "
+            "(remplaces seulement au ramassage).", ajouts, pieces, sans_modele);
+}
+
+/* Appelée à l'entrée de SpawnItem (ESP = adresse de retour). */
+static void remplacer_au_placement(CONTEXT *c)
+{
+    DWORD esp = c->Esp, scene, liste, nb, tableau, evt, piece, valeurs[8], ancien_id, ancienne_qte, idx;
+    const Emplacement *e;
+
+    if (!lisible((void *)esp, 0x20, 1) || !lisible((void *)ADR_SCENE, 4, 0)) return;
+    scene = *(DWORD *)ADR_SCENE;
+    if (!scene || !lisible((void *)(scene + 0x3A0 + 0xD4), 0x10, 0)) return;
+    liste = scene + 0x3A0;
+    nb = *(DWORD *)(liste + 0xD4);
+    tableau = *(DWORD *)(liste + 0xE0);
+    idx = *(DWORD *)(esp + 0x18);
+    if (idx >= nb || !lisible((void *)(tableau + idx * 4), 4, 0)) return;
+    evt = *(DWORD *)(tableau + idx * 4);
+    if (!lisible((void *)(evt + 0x10), 0x20, 0) || !piece_actuelle(&piece)) return;
+    memcpy(valeurs, (void *)(evt + 0x10), sizeof valeurs);
+    e = chercher_emplacement(piece, valeurs);
+    if (!e || !g_modele_ok[e - g_seed]) return;        /* pas de modèle chargé : on laisse l'objet d'origine */
+    ancien_id = *(DWORD *)(esp + 0x04);
+    ancienne_qte = *(DWORD *)(esp + 0x10);
+    *(DWORD *)(esp + 0x04) = e->id;
+    *(DWORD *)(esp + 0x10) = e->qte;
+    if (g_messages < 500) {
+        g_messages++;
+        journal("Piece %X : objet pose remplace (evenement %lu) : id %lu x%lu -> id %lu x%lu", piece,
+                (unsigned long)idx, (unsigned long)ancien_id, (unsigned long)ancienne_qte,
+                (unsigned long)e->id, (unsigned long)e->qte);
     }
 }
 
@@ -354,9 +474,16 @@ static void ecrire_diag(const char *t, int n)
     }
 }
 
+/* Pieges=1 dans randomizer.ini : pièges en écriture (désactivés par défaut). Résultat du 17/11/2026 : les
+ * objets d'une pièce sont LIBÉRÉS quand on la quitte (leur mémoire sert ensuite à décompresser sons et
+ * textures) ; ils ne sont pas réutilisés, donc les pièges posés sur eux n'attrapent pas leur création. */
+static int g_pieges;
+
 /* Liste tous les objets posés présents en mémoire (appelé peu après un changement de pièce). */
 static void scanner_piece(DWORD piece)
 {
+    DWORD reels[3];
+    int nb_reels = 0;
     static Trouves r;
     static char t[65536];
     int n = 0, k, i;
@@ -385,6 +512,15 @@ static void scanner_piece(DWORD piece)
         for (i = 0; i < 12; i++) diag_ajouter(t, &n, sizeof t, " %08X", o[i]);
         diag_ajouter(t, &n, sizeof t, "\r\n    +40..4F:");
         for (i = 0; i < 4; i++) diag_ajouter(t, &n, sizeof t, " %08X", o[(0x30 + 0x30) / 4 + i]);
+        diag_ajouter(t, &n, sizeof t, "\r\n");
+        /* vrai objet (même test que le mode relevé) : candidat pour les pièges en écriture */
+        if ((o[(0x30 + 0x30) / 4] & 0xFF) == 0x04 && (o[(0x30 + 0x30) / 4] >> 16) != 0
+            && (o[(0x30 + 0x34) / 4] >> 16) != 0 && nb_reels < 3)
+            reels[nb_reels++] = r.adr[k];
+    }
+    if (nb_reels) {
+        diag_ajouter(t, &n, sizeof t, "vrais objets :");
+        for (i = 0; i < nb_reels; i++) diag_ajouter(t, &n, sizeof t, " %08X+34", reels[i]);
         diag_ajouter(t, &n, sizeof t, "\r\n");
     }
     diag_ajouter(t, &n, sizeof t, "\r\n");
@@ -520,6 +656,177 @@ static void chercher_origine(const Ramassage *p)
     ecrire_diag(t, n);
 }
 
+/* ------------------------------------------- diagnostic : pièges en écriture (Diagnostic=1)
+ *
+ * Constat du 17/11/2026 : la zone de ramassage n'existe nulle part ailleurs en mémoire (ni script de pièce
+ * en flottants, ni en entiers). En revanche, les objets posés sont RÉUTILISÉS d'une pièce à l'autre : le
+ * même objet 1C23D3A0 portait le chargeur de la pièce 112, puis celui de la pièce 214. Le jeu les remplit
+ * donc à chaque entrée dans une pièce. On pose des points d'arrêt matériels « en écriture » (DR1 à DR3) sur
+ * l'id/quantité (+0x34) de trois objets de la pièce : à la pièce suivante, le processeur s'arrête juste
+ * après l'écriture et on note l'instruction (EIP), les registres et la mémoire qu'ils désignent. Les
+ * registres doivent montrer d'où viennent l'id et la quantité (le vrai « script » de la pièce), et le code
+ * trouvé est l'endroit où l'on pourra changer l'objet AVANT que son modèle 3D soit chargé. */
+#define MAX_PIEGES        40      /* écritures notées au plus (sur toute la partie) */
+#define MAX_PAR_EIP       3       /* au plus 3 notes pour une même instruction */
+#define MAX_DECLENCHEMENTS 20000  /* garde-fou : au-delà, on retire les pièges */
+
+static volatile DWORD g_veille[3];            /* DR1..DR3 : adresses surveillées, 0 = libre */
+static volatile DWORD g_veille_cond[3];       /* 0 = exécution, 0xD = écriture de 4 octets */
+
+/* v0.7.3-dev : point d'arrêt en EXÉCUTION (DR1) dans la boucle qui crée les objets de la pièce à partir de
+ * room\aev\r<pièce> (bhd.exe+8026B : ESI = l'objet tout juste copié, id/quantité encore à 0). Pour chaque
+ * objet de type 4 (objet à ramasser), on pose un piège en écriture (DR2 ou DR3) sur son +0x34 : on voit
+ * alors QUI écrit l'id et la quantité, et d'où il les tire. */
+#ifndef ADR_AEV
+#define ADR_AEV        (BASE_JEU + 0x8026Bu)
+#endif
+#define MAX_AEV_NOTES  64
+static DWORD g_aev_notes[MAX_AEV_NOTES][4];    /* objet, +30, +34, pièce */
+static volatile LONG g_nb_aev, g_aev_lu, g_aev_items;
+static volatile LONG  g_veille_changee;        /* 1 : réarmer tous les threads */
+static volatile LONG  g_declenchements;
+
+typedef struct {
+    DWORD tick, piece, eip, slot, adr, valeur, regs[8];   /* EAX EBX ECX EDX ESI EDI EBP ESP */
+    BYTE  code[0x40];                                   /* 0x30 octets avant EIP, 0x10 après */
+    DWORD pile[16];
+    DWORD objet[0x40 / 4];                              /* l'objet entier (adr - 0x34) */
+    DWORD autour[8][0x60 / 4];                          /* -0x20..+0x40 autour de chaque registre */
+    BYTE  autour_ok[8];
+} Ecriture;
+static Ecriture g_ecritures[MAX_PIEGES];
+static volatile LONG g_ecr_ecrit, g_ecr_lu;
+static DWORD g_eip_vus[64], g_eip_compte[64];
+static int   g_nb_eip;
+
+static int compter_eip(DWORD eip)                    /* nombre de fois déjà noté (puis +1) */
+{
+    int i;
+    for (i = 0; i < g_nb_eip; i++) if (g_eip_vus[i] == eip) return (int)g_eip_compte[i]++;
+    if (g_nb_eip < 64) { g_eip_vus[g_nb_eip] = eip; g_eip_compte[g_nb_eip++] = 1; }
+    return 0;
+}
+
+static DWORD taille_dll(void)                        /* taille de notre DLL en mémoire */
+{
+    const IMAGE_DOS_HEADER *d = (const IMAGE_DOS_HEADER *)g_inst;
+    return ((const IMAGE_NT_HEADERS *)((const BYTE *)d + d->e_lfanew))->OptionalHeader.SizeOfImage;
+}
+
+/* Appelée par le gestionnaire d'exceptions, dans le thread du jeu : copie seulement, rien d'écrit sur disque. */
+static void noter_ecriture(const CONTEXT *c, int slot)
+{
+    Ecriture *e;
+    LONG i;
+    int k;
+    DWORD adr = g_veille[slot - 1], regs[8];
+
+    if (c->Eip - (DWORD)g_inst < taille_dll()) return;  /* nos propres écritures (remplacement) */
+
+    if (InterlockedIncrement(&g_declenchements) > MAX_DECLENCHEMENTS) {
+        g_veille[0] = g_veille[1] = g_veille[2] = 0;
+        InterlockedExchange(&g_veille_changee, 1);
+        return;
+    }
+    if (g_ecr_ecrit >= MAX_PIEGES || compter_eip(c->Eip) >= MAX_PAR_EIP) return;
+    i = InterlockedIncrement(&g_ecr_ecrit) - 1;
+    if (i >= MAX_PIEGES) return;
+    e = &g_ecritures[i];
+    memset(e, 0, sizeof *e);
+    e->tick = GetTickCount();
+    piece_actuelle(&e->piece);
+    e->eip = c->Eip; e->slot = (DWORD)slot; e->adr = adr;
+    regs[0] = c->Eax; regs[1] = c->Ebx; regs[2] = c->Ecx; regs[3] = c->Edx;
+    regs[4] = c->Esi; regs[5] = c->Edi; regs[6] = c->Ebp; regs[7] = c->Esp;
+    memcpy(e->regs, regs, sizeof regs);
+    if (lisible((void *)adr, 4, 0)) e->valeur = *(DWORD *)adr;
+    if (lisible((void *)(c->Eip - 0x30), sizeof e->code, 0)) memcpy(e->code, (void *)(c->Eip - 0x30), sizeof e->code);
+    if (lisible((void *)c->Esp, sizeof e->pile, 0)) memcpy(e->pile, (void *)c->Esp, sizeof e->pile);
+    if (lisible((void *)(adr - 0x34), sizeof e->objet, 0)) memcpy(e->objet, (void *)(adr - 0x34), sizeof e->objet);
+    for (k = 0; k < 8; k++)
+        if (regs[k] >= 0x10000 && lisible((void *)(regs[k] - 0x20), sizeof e->autour[k], 0)) {
+            memcpy(e->autour[k], (void *)(regs[k] - 0x20), sizeof e->autour[k]);
+            e->autour_ok[k] = 1;
+        }
+}
+
+/* Appelée quand le jeu vient de créer un objet de la pièce (ESI). Objet à ramasser (type 4) : piège en
+ * écriture sur son +0x34, posé tout de suite dans ce thread et ensuite dans tous les autres. */
+static void nouvel_objet_aev(CONTEXT *c)
+{
+    DWORD o = c->Esi, slot, idx;
+    LONG i = InterlockedIncrement(&g_nb_aev) - 1;
+    if (!lisible((void *)o, 0x40, 0)) return;
+    if (i < MAX_AEV_NOTES) {
+        g_aev_notes[i][0] = o;
+        g_aev_notes[i][1] = *(DWORD *)(o + 0x30);
+        g_aev_notes[i][2] = *(DWORD *)(o + 0x34);
+        g_aev_notes[i][3] = 0;
+        piece_actuelle(&g_aev_notes[i][3]);
+    }
+    if ((*(DWORD *)(o + 0x30) & 0xFF) != 4 || g_ecr_ecrit >= MAX_PIEGES) return;
+    idx = 1 + ((DWORD)InterlockedIncrement(&g_aev_items) & 1);   /* g_veille[1] ou [2] : DR2 ou DR3 */
+    slot = idx + 1;
+    g_veille[idx] = o + 0x34;
+    g_veille_cond[idx] = 0xD;
+    (&c->Dr0)[slot] = o + 0x34;
+    c->Dr7 = (c->Dr7 & ~((3u << (2 * slot)) | (0xFu << (16 + 4 * slot))))
+             | (1u << (2 * slot)) | (0xDu << (16 + 4 * slot));
+    InterlockedExchange(&g_veille_changee, 1);
+}
+
+/* Écrit les écritures notées dans randomizer_diagnostic.txt (thread de surveillance). */
+static void ecrire_pieges(void)
+{
+    static const char *noms[8] = { "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP", "ESP" };
+    static char t[24576];
+    while (g_aev_lu < g_nb_aev && g_aev_lu < MAX_AEV_NOTES) {
+        const DWORD *a = g_aev_notes[g_aev_lu];
+        int n = 0;
+        diag_ajouter(t, &n, sizeof t, "creation objet %ld : %08X  piece=%X  +30=%08X  +34=%08X%s\r\n",
+                     g_aev_lu + 1, a[0], a[3], a[1], a[2], (a[1] & 0xFF) == 4 ? "  (objet a ramasser : piege pose)" : "");
+        ecrire_diag(t, n);
+        InterlockedIncrement(&g_aev_lu);
+    }
+    while (g_ecr_lu < g_ecr_ecrit && g_ecr_lu < MAX_PIEGES) {
+        const Ecriture *e = &g_ecritures[g_ecr_lu];
+        int n = 0, i, k;
+        SYSTEMTIME h;
+        GetLocalTime(&h);
+        diag_ajouter(t, &n, sizeof t, "==== ecriture %ld  %02d:%02d:%02d  piece=%X  DR%lu  objet %08X+34 <- %08X "
+                     "(id=%u qte=%u)  EIP=bhd.exe+%X\r\n", g_ecr_lu + 1, h.wHour, h.wMinute, h.wSecond, e->piece,
+                     e->slot, e->adr - 0x34, e->valeur, e->valeur >> 16, e->valeur & 0xFFFF, e->eip - BASE_JEU);
+        diag_ajouter(t, &n, sizeof t, "regs:");
+        for (k = 0; k < 8; k++) diag_ajouter(t, &n, sizeof t, " %s=%08X", noms[k], e->regs[k]);
+        diag_ajouter(t, &n, sizeof t, "\r\ncode (EIP-30 .. EIP+10):");
+        for (i = 0; i < (int)sizeof e->code; i++)
+            diag_ajouter(t, &n, sizeof t, i == 0x30 ? " |%02X" : (i % 16 == 0 ? "\r\n   %02X" : " %02X"), e->code[i]);
+        diag_ajouter(t, &n, sizeof t, "\r\npile:");
+        for (i = 0; i < 16; i++) {
+            DWORD v = e->pile[i];
+            if (v >= BASE_JEU && v < BASE_JEU + 0x1000000u) diag_ajouter(t, &n, sizeof t, " [bhd+%X]", v - BASE_JEU);
+            else diag_ajouter(t, &n, sizeof t, " %08X", v);
+        }
+        diag_ajouter(t, &n, sizeof t, "\r\nobjet:");
+        for (i = 0; i < 0x40 / 4; i++) {
+            if (i % 8 == 0) diag_ajouter(t, &n, sizeof t, "\r\n   +%02X:", i * 4);
+            diag_ajouter(t, &n, sizeof t, " %08X", e->objet[i]);
+        }
+        for (k = 0; k < 8; k++) {
+            if (!e->autour_ok[k]) continue;
+            diag_ajouter(t, &n, sizeof t, "\r\n%s (%08X) -20..+40:", noms[k], e->regs[k]);
+            for (i = 0; i < 0x60 / 4; i++) {
+                if (i % 8 == 0) diag_ajouter(t, &n, sizeof t, "\r\n   %c%02X:", i < 8 ? '-' : '+',
+                                             i < 8 ? 0x20 - i * 4 : i * 4 - 0x20);
+                diag_ajouter(t, &n, sizeof t, i == 8 ? " |%08X" : " %08X", e->autour[k][i]);
+            }
+        }
+        diag_ajouter(t, &n, sizeof t, "\r\n\r\n");
+        ecrire_diag(t, n);
+        InterlockedIncrement(&g_ecr_lu);
+    }
+}
+
 /* --------------------------------------------- mode relevé (Releve=1) */
 
 /* À chaque nouvelle pièce, note dans le journal les objets posés encore présents, sans rien ramasser.
@@ -580,6 +887,7 @@ static void diagnostic_periodique(void)
     static DWORD derniere_piece = 0xFFFFFFFF, piece_stable, depuis;
     DWORD piece;
 
+    if (g_diagnostic) ecrire_pieges();
     while (g_diagnostic && g_file_lu < g_file_ecrit) {
         chercher_pointeurs(&g_file[g_file_lu & 15]);
         chercher_origine(&g_file[g_file_lu & 15]);
@@ -598,7 +906,28 @@ static void diagnostic_periodique(void)
 static LONG CALLBACK gestionnaire(EXCEPTION_POINTERS *ep)
 {
     CONTEXT *c = ep->ContextRecord;
-    if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP || c->Eip != ADR_LECTURE)
+    if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
+        return EXCEPTION_CONTINUE_SEARCH;
+    if (c->Eip == ADR_SPAWN && g_veille[0] == ADR_SPAWN) {   /* placement d'un objet (Visible=1) */
+        c->Dr6 = 0;
+        if (!g_coupe) remplacer_au_placement(c);
+        c->EFlags |= 0x10000;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (c->Eip == ADR_AEV && g_veille[0] == ADR_AEV) {   /* création d'un objet de la pièce (diagnostic) */
+        c->Dr6 = 0;
+        nouvel_objet_aev(c);
+        c->EFlags |= 0x10000;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if ((c->Dr6 & 0xCu) && c->Eip != ADR_LECTURE) {     /* piège en écriture DR2/DR3 (diagnostic) */
+        DWORD dr6 = c->Dr6;
+        c->Dr6 = 0;
+        if (dr6 & 4u) noter_ecriture(c, 2);
+        if (dr6 & 8u) noter_ecriture(c, 3);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (c->Eip != ADR_LECTURE)
         return EXCEPTION_CONTINUE_SEARCH;
     if (g_diagnostic && !g_coupe) {                    /* avant tout remplacement */
         diagnostiquer(c);
@@ -635,11 +964,20 @@ static void regler_thread(DWORD tid, int armer)
         c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
         if (GetThreadContext(h, &c)) {
             if (armer) {
+                int i;
                 c.Dr0 = ADR_LECTURE;
                 c.Dr7 = (c.Dr7 & ~0x000F0003u) | 1u;   /* L0 = 1, exécution, longueur 1 */
-            } else if (c.Dr0 == ADR_LECTURE) {
-                c.Dr0 = 0;
-                c.Dr7 &= ~3u;
+                /* pièges en écriture (diagnostic) : DRi = adresse, Li = 1, RWi = 01 (écriture), LENi = 11 (4 o) */
+                c.Dr7 &= ~0xFFF000FCu;
+                for (i = 1; i <= 3; i++) {
+                    DWORD a = g_veille[i - 1];
+                    (&c.Dr0)[i] = a;
+                    if (a) c.Dr7 |= (1u << (2 * i)) | (g_veille_cond[i - 1] << (16 + 4 * i));
+                }
+            } else {
+                if (c.Dr0 == ADR_LECTURE) { c.Dr0 = 0; c.Dr7 &= ~3u; }
+                c.Dr1 = c.Dr2 = c.Dr3 = 0;
+                c.Dr7 &= ~0xFFF000FCu;
             }
             SetThreadContext(h, &c);
         }
@@ -659,7 +997,8 @@ static void parcourir_threads(int armer)
         do {
             if (te.th32OwnerProcessID != pid || te.th32ThreadID == moi) continue;
             if (armer) {
-                if (deja_arme(te.th32ThreadID)) continue;
+                if (armer == 1 && deja_arme(te.th32ThreadID)) continue;
+                if (deja_arme(te.th32ThreadID)) { regler_thread(te.th32ThreadID, 1); continue; }
                 regler_thread(te.th32ThreadID, 1);
                 if (g_nb_threads < MAX_THREADS) g_threads_armes[g_nb_threads++] = te.th32ThreadID;
             } else {
@@ -668,6 +1007,36 @@ static void parcourir_threads(int armer)
         } while (Thread32Next(s, &te));
     }
     CloseHandle(s);
+}
+
+/* Diagnostic : copie unique du code de bhd.exe tel qu'il est en mémoire (déchiffré par la protection
+ * Steam) dans bhd_memoire.bin, pour l'étudier hors du jeu : trouver le code qui crée les objets posés et
+ * celui qui charge leur modèle 3D. Fichier personnel, jamais publié. */
+static void vider_image(void)
+{
+    static BYTE tampon[65536];
+    char chemin[MAX_PATH];
+    const IMAGE_DOS_HEADER *d = (const IMAGE_DOS_HEADER *)BASE_JEU;
+    DWORD taille, a, ecrit, illisibles = 0;
+    HANDLE f;
+
+    _snprintf(chemin, MAX_PATH, "%sbhd_memoire.bin", g_dossier);
+    if (GetFileAttributesA(chemin) != INVALID_FILE_ATTRIBUTES) return;      /* déjà fait */
+    if (!lisible(d, sizeof *d, 0) || !lisible((const BYTE *)d + d->e_lfanew, sizeof(IMAGE_NT_HEADERS), 0)) return;
+    taille = ((const IMAGE_NT_HEADERS *)((const BYTE *)d + d->e_lfanew))->OptionalHeader.SizeOfImage;
+    f = CreateFileA(chemin, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f == INVALID_HANDLE_VALUE) return;
+    for (a = 0; a < taille; a += sizeof tampon) {
+        DWORD n = taille - a < sizeof tampon ? taille - a : sizeof tampon, p;
+        for (p = 0; p < n; p += 4096) {                     /* page par page : une page illisible = zéros */
+            DWORD m = n - p < 4096 ? n - p : 4096;
+            if (!copier(BASE_JEU + a + p, tampon + p, m)) { memset(tampon + p, 0, m); illisibles++; }
+        }
+        WriteFile(f, tampon, n, &ecrit, NULL);
+    }
+    CloseHandle(f);
+    journal("Image de bhd.exe copiee dans bhd_memoire.bin : %lu octets (%lu page(s) illisible(s)).",
+            (unsigned long)taille, (unsigned long)illisibles);
 }
 
 static BOOL CALLBACK chercher_fenetre(HWND w, LPARAM trouve)
@@ -692,6 +1061,8 @@ static DWORD WINAPI surveillance(LPVOID inutile)
     }
     Sleep(3000);
 
+    if (g_diagnostic) vider_image();
+    if (g_visible) ajouter_modeles();             /* écran titre : aucune pièce n'est encore chargée */
     AddVectoredExceptionHandler(1, gestionnaire);
     InterlockedExchange(&g_actif, 1);
     journal("Point d'arret pose en bhd.exe+1512ED.");
@@ -702,7 +1073,8 @@ static DWORD WINAPI surveillance(LPVOID inutile)
             journal("Points d'arret retires de tous les threads.");
             return 0;
         }
-        if (tour % 4 == 0) parcourir_threads(1);   /* arme les threads créés depuis le dernier passage */
+        if (InterlockedExchange(&g_veille_changee, 0)) parcourir_threads(2);   /* pièges déplacés */
+        else if (tour % 4 == 0) parcourir_threads(1);   /* arme les threads créés depuis le dernier passage */
         if (g_diagnostic || g_releve) diagnostic_periodique();
         Sleep(250);
     }
@@ -720,7 +1092,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.7 : demarrage");
+    journal("---- Randomizer RE HD v0.8 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
@@ -749,6 +1121,7 @@ static void demarrer(void)
         _snprintf(g_fichier_diag, MAX_PATH, "%srandomizer_diagnostic.txt", g_dossier);
         journal("Mode diagnostic actif : details dans randomizer_diagnostic.txt (%d releves au plus).", MAX_DIAG);
     }
+    g_pieges = g_diagnostic && GetPrivateProfileIntA("Randomizer", "Pieges", 0, ini);
     g_releve = GetPrivateProfileIntA("Randomizer", "Releve", 0, ini);
     if (g_releve)
         journal("Mode releve actif : les objets de chaque nouvelle piece sont notes ici (lignes Releve auto).");
@@ -762,6 +1135,27 @@ static void demarrer(void)
                 g_graine, g_nb, g_armes == 1 ? "OUI" : g_armes == 0 ? "non" : "inconnu", chemin_seed);
     }
     if (g_nb == 0 && !g_diagnostic && !g_releve) return;
+
+    /* Objets visibles : option choisie à la génération (dans la seed) ; Visible=0/1 dans randomizer.ini
+     * la remplace. Le mode relevé doit voir les objets d'origine : il la désactive. */
+    g_visible = GetPrivateProfileIntA("Randomizer", "Visible", -1, ini);
+    if (g_visible < 0) g_visible = g_visible_seed;
+    if (g_visible && g_releve) {
+        g_visible = 0;
+        journal("Objets visibles desactives pendant le mode releve (les objets d'origine doivent etre notes).");
+    }
+    if (g_visible && g_nb == 0) g_visible = 0;
+    if (g_visible) {                              /* prioritaire sur les pièges du diagnostic (même DR1) */
+        g_pieges = 0;
+        g_veille[0] = ADR_SPAWN;                  /* DR1 : exécution */
+        g_veille_cond[0] = 0;
+        journal("Objets visibles : les objets poses sont remplaces avant la creation de leur modele.");
+    }
+    if (g_pieges) {
+        g_veille[0] = ADR_AEV;                    /* DR1 : exécution */
+        g_veille_cond[0] = 0;
+        journal("Pieges actifs : creation des objets de piece (bhd.exe+8026B) puis ecriture de leur id.");
+    }
 
     CloseHandle(CreateThread(NULL, 0, surveillance, NULL, 0, NULL));
 }

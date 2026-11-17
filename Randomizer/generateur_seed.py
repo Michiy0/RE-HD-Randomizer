@@ -222,11 +222,12 @@ def tirer_graine():
 
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
              dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None,
-             armes_choisies=None):
+             armes_choisies=None, objets_visibles=True):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
     Renvoie True si tout s'est bien passé. langue : langue des messages et du spoiler (textes.py).
     dire_spoiler : si donné, reçoit le spoiler complet (sinon il passe par dire).
-    armes_choisies : ids des armes à mélanger avec armes_aleatoires (None = toutes celles connues)."""
+    armes_choisies : ids des armes à mélanger avec armes_aleatoires (None = toutes celles connues).
+    objets_visibles : la DLL remplace aussi les objets posés (modèle par terre et aperçu) avant ramassage."""
     if not Path(fichier).exists():
         dire(tr("gen_donnees", langue, fichier=fichier))
         return False
@@ -249,7 +250,7 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
         "version_jeu": {"taille_bhd_exe": 9640360,
                         "sha256": "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"},
         "personnage": personnage, "difficulte": difficulte,
-        "graine": graine, "options": {"armes_aleatoires": armes_aleatoires},
+        "graine": graine, "options": {"armes_aleatoires": armes_aleatoires, "objets_visibles": bool(objets_visibles)},
         "remplacements": resultat,
     }
     (sortie_dir / f"{nom}.json").write_text(json.dumps(sortie, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -257,7 +258,8 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     # Version Lua : lue par la DLL (randomizer_seed.lua) et par appliquer_seed.lua dans Cheat Engine
     lua = ["-- seed générée par generateur_seed.py : ne pas modifier à la main",
            "return {", f"  graine = {graine},",
-           f"  armes_aleatoires = {'true' if armes_aleatoires else 'false'},", "  remplacements = {"]
+           f"  armes_aleatoires = {'true' if armes_aleatoires else 'false'},",
+           f"  objets_visibles = {'true' if objets_visibles else 'false'},", "  remplacements = {"]
     for r in resultat:
         emp = ", ".join("0x" + v.upper() for v in r["empreinte"])
         lua.append(f"    {{ piece = 0x{r['piece'].upper()}, empreinte = {{ {emp} }}, "
@@ -292,6 +294,8 @@ def main():
     parser.add_argument("graine", nargs="?", type=int, help="numéro de graine (au hasard si absent)")
     parser.add_argument("--armes-aleatoires", action="store_true",
                         help="mélange aussi le pistolet (Chris doit alors trouver son arme)")
+    parser.add_argument("--objets-invisibles", action="store_true",
+                        help="ne remplace les objets qu'au ramassage (par terre, on voit l'objet d'origine)")
     parser.add_argument("--fichier", default=FICHIER_PAR_DEFAUT, help="tableur de données")
     parser.add_argument("--personnage", default="Chris", choices=("Chris", "Jill"))
     parser.add_argument("--difficulte", default="Normal",
@@ -303,7 +307,8 @@ def main():
 
     graine = args.graine if args.graine is not None else tirer_graine()
     if not produire(graine, args.armes_aleatoires, args.fichier, ".", args.installer, args.dossier_jeu,
-                    personnage=args.personnage, difficulte=args.difficulte):
+                    personnage=args.personnage, difficulte=args.difficulte,
+                    objets_visibles=not args.objets_invisibles):
         sys.exit(1)
 
 

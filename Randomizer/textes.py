@@ -270,6 +270,23 @@ T = {
                     "Ningún arma marcada: las armas se quedan en su sitio.",
                     "Nenhuma arma marcada: as armas ficam no lugar.",
                     "Оружие не выбрано: оно останется на своих местах.", "未勾选任何武器：武器保持原位。"),
+    "objets_visibles": ("Objets visibles par terre", "Items visible on the ground", "床の上でも見える",
+                        "Objetos visibles en el suelo", "Itens visíveis no chão", "Предметы видны на полу",
+                        "地上可见物品"),
+    "note_objets_visibles": (
+        "Le nouvel objet apparaît directement dans le décor et dans l'aperçu avant ramassage. "
+        "Décoché : on voit l'objet d'origine jusqu'au ramassage.",
+        "The new item shows up directly in the room and in the preview before pickup. "
+        "Unticked: you see the original item until you pick it up.",
+        "新しいアイテムが部屋の中と拾う前のプレビューにそのまま表示されます。"
+        "オフ：拾うまで元のアイテムが表示されます。",
+        "El nuevo objeto aparece directamente en la sala y en la vista previa antes de recogerlo. "
+        "Desmarcado: se ve el objeto original hasta recogerlo.",
+        "O novo item aparece direto no cenário e na prévia antes de pegar. "
+        "Desmarcado: vê-se o item original até pegá-lo.",
+        "Новый предмет сразу виден в комнате и в предпросмотре перед подбором. "
+        "Без отметки: до подбора виден исходный предмет.",
+        "新物品会直接出现在场景和拾取前的预览中。不勾选：拾取前看到的是原物品。"),
     "graine": ("Graine", "Seed", "シード", "Semilla", "Semente", "Сид", "种子"),
     "au_hasard": ("Au hasard", "Random", "ランダム", "Al azar", "Aleatória", "Случайно", "随机"),
     "note_graine": ("Même graine + mêmes options = même résultat.", "Same seed + same options = same result.",

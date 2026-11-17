@@ -17,6 +17,8 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 
 - **Les objets changent de place** : munitions, herbes, rubans encreurs, poignards… Les clés et objets de
   quête restent à leur place, la partie reste toujours finissable.
+- **On voit le nouvel objet** : il apparaît directement par terre dans le décor et dans l'aperçu avant
+  ramassage (option « Objets visibles par terre »).
 - **Une application simple** : on installe le randomizer, on choisit ses options, on génère une seed, et
   c'est prêt. Un clic suffit pour revenir au jeu d'origine.
 - **Sans Cheat Engine** : une petite DLL se charge avec le jeu et fait le travail. Le code du jeu n'est
@@ -27,12 +29,13 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
 
-## État : version 0.7 (test)
+## État : version 0.8 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal | Jill, autres difficultés |
 | 34 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
+| **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles (avec les clés) |
 | Option **armes aléatoires**, avec le choix des armes à mélanger (pour l'instant le pistolet du hall) | Les autres armes, **armes bonus** (Samurai Edge et lance-roquettes illimités), ennemis aléatoires |
 | Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | — |
 
@@ -134,7 +137,8 @@ système, anglais sinon).
 - **Générer une seed** — débloqué une fois la DLL en place :
   - *Partie* : personnage et difficulté ;
   - *Options* : armes aléatoires (cocher la case affiche la liste des armes ; décoche celles qui doivent
-    rester à leur place), graine (ou « Au hasard ») — même graine + mêmes options = même résultat ;
+    rester à leur place), objets visibles par terre (cochée d'office ; décochée, on voit l'objet d'origine
+    jusqu'au ramassage), graine (ou « Au hasard ») — même graine + mêmes options = même résultat ;
   - **Générer la seed** : écrit la seed dans le dossier `seeds` et l'installe dans le jeu.
 - **Spoiler** — débloqué dès qu'il y a une seed : la liste complète des changements (« pièce : objet
   d'origine → nouvel objet »), cachée tant qu'on ne coche pas *Afficher le spoiler*.
@@ -253,7 +257,8 @@ GPLv3 — voir [LICENSE](LICENSE).
 [Report a problem](https://github.com/Michiy0/RE-HD-Randomizer/issues)
 
 The randomizer **moves the game's items around**: ammo, herbs, ink ribbons… are no longer where you
-expect them, and every new game plays differently.
+expect them, and every new game plays differently. The new item shows up directly on the floor and in the
+preview before pickup.
 
 Each shuffle has a number, the **seed**. The same seed always gives exactly the same shuffle: share the
 number and a friend can play the same game as you, each on their own PC or Steam Deck, to compare times
@@ -275,12 +280,13 @@ or strategies.
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
 
-### Status: version 0.7 (test)
+### Status: version 0.8 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty | Jill, other difficulties |
 | 34 placed-item locations: ammo, herbs, ink ribbons, daggers, first aid boxes | Keys and quest items (with logic that keeps the game completable) |
+| **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items (with keys) |
 | **Random weapons** option, with a choice of which weapons to shuffle (for now the main hall handgun) | The other weapons, **bonus weapons** (unlimited Samurai Edge and rocket launcher), random enemies |
 | Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | — |
 
@@ -346,6 +352,7 @@ otherwise).
 - **Generate a seed** — unlocked once the DLL is in place:
   - *Playthrough*: character and difficulty;
   - *Options*: random weapons (ticking it shows the weapon list; untick those that should stay in place),
+    items visible on the ground (ticked by default; unticked, you see the original item until pickup),
     seed (or “Random”) — same seed + same options = same result;
   - **Generate seed**: writes the seed to the `seeds` folder and installs it in the game.
 - **Spoiler** — unlocked as soon as there is a seed: the full list of changes (“room: original item → new
