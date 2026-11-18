@@ -37,8 +37,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 <td align="center"><img src="images/appli_installation_fr.png" alt="Installation : la DLL en un clic" width="420"><br><sub>Installation : la DLL en un clic</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="images/appli_spoiler_fr.png" alt="Spoiler : la liste complète des changements" width="420"><br><sub>Spoiler : la liste complète des changements</sub></td>
-<td align="center"><img src="images/appli_info_fr.png" alt="Info : crédits et liens" width="420"><br><sub>Info : crédits et liens</sub></td>
+<td align="center" colspan="2"><img src="images/appli_spoiler_fr.png" alt="Spoiler : la liste complète des changements" width="420"><br><sub>Spoiler : la liste complète des changements</sub></td>
 </tr>
 </table>
 
@@ -304,8 +303,7 @@ or strategies.
 <td align="center"><img src="images/appli_installation_en.png" alt="Installation: the DLL in one click" width="420"><br><sub>Installation: the DLL in one click</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="images/appli_spoiler_en.png" alt="Spoiler: the full list of changes" width="420"><br><sub>Spoiler: the full list of changes</sub></td>
-<td align="center"><img src="images/appli_info_en.png" alt="Info: credits and links" width="420"><br><sub>Info: credits and links</sub></td>
+<td align="center" colspan="2"><img src="images/appli_spoiler_en.png" alt="Spoiler: the full list of changes" width="420"><br><sub>Spoiler: the full list of changes</sub></td>
 </tr>
 </table>
 
