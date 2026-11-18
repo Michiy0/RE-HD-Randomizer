@@ -41,7 +41,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.5 (test)
+## État : version 0.8.6 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -310,7 +310,7 @@ or strategies.
 </tr>
 </table>
 
-### Status: version 0.8.5 (test)
+### Status: version 0.8.6 (test)
 
 | Supported | Coming |
 |---|---|

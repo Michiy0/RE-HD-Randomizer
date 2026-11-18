@@ -23,7 +23,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.8.5"
+VERSION = "0.8.6"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)

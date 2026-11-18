@@ -224,6 +224,12 @@ static void traiter_objet(DWORD structure)
 #ifndef ADR_SPAWN
 #define ADR_SPAWN       (BASE_JEU + 0x819E0u)
 #endif
+/* Deuxième fonction de placement, pour les objets « spéciaux » (ex. le fusil accroché au mur du salon, 116 :
+ * test du 18/11/2026, le modèle et l'aperçu restaient ceux du fusil). Mêmes arguments que SpawnItem
+ * (+4 id, +10 quantité, +18 n° d'événement) ; modèle créé avec le type 0x13. Appelée par 3 endroits du jeu. */
+#ifndef ADR_SPAWN2
+#define ADR_SPAWN2      (BASE_JEU + 0x81830u)
+#endif
 #ifndef ADR_SCENE
 #define ADR_SCENE       (BASE_JEU + 0x8F2FC8u)   /* objet « scène » ; +0x3A0 = liste des événements */
 #endif
@@ -939,7 +945,8 @@ static LONG CALLBACK gestionnaire(EXCEPTION_POINTERS *ep)
     CONTEXT *c = ep->ContextRecord;
     if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
         return EXCEPTION_CONTINUE_SEARCH;
-    if (c->Eip == ADR_SPAWN && g_veille[0] == ADR_SPAWN) {   /* placement d'un objet (Visible=1) */
+    if ((c->Eip == ADR_SPAWN && g_veille[0] == ADR_SPAWN)    /* placement d'un objet (Visible=1) */
+        || (c->Eip == ADR_SPAWN2 && g_veille[1] == ADR_SPAWN2)) {
         c->Dr6 = 0;
         if (!g_coupe) remplacer_au_placement(c);
         c->EFlags |= 0x10000;
@@ -1123,7 +1130,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.8.4 : demarrage");
+    journal("---- Randomizer RE HD v0.8.6 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
@@ -1180,6 +1187,8 @@ static void demarrer(void)
         g_pieges = 0;
         g_veille[0] = ADR_SPAWN;                  /* DR1 : exécution */
         g_veille_cond[0] = 0;
+        g_veille[1] = ADR_SPAWN2;                 /* DR2 : exécution (objets spéciaux) */
+        g_veille_cond[1] = 0;
         journal("Objets visibles : les objets poses sont remplaces avant la creation de leur modele.");
     }
     if (g_pieges) {
