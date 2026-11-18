@@ -881,6 +881,47 @@ static void ecrire_pieges(void)
     }
 }
 
+/* Objets visibles : mise à jour directe des événements de la pièce (thread de surveillance, toutes les 250 ms).
+ * Certains objets ne passent par aucune des fonctions de placement surveillées (ex. le fusil au mur du salon) :
+ * leur id n'était changé qu'au ramassage, trop tard pour l'aperçu, que le jeu prépare d'après l'id de
+ * l'événement (vue arc\itemv\iNNNv chargée pour l'ANCIEN objet → aperçu noir, test du 19/11/2026). On met
+ * donc à jour l'id et la quantité de chaque événement de la pièce dont la zone est dans la seed (et dont le
+ * modèle du nouvel objet est chargé), dès l'entrée dans la pièce. */
+static int evenements_piece(DWORD *adresses);
+
+static void mettre_a_jour_evenements(void)
+{
+    static DWORD evts[512];
+    DWORD piece, valeurs[8], voulu;
+    int n, k, i;
+    if (!piece_actuelle(&piece) || piece == 0) return;
+    for (i = 0; i < g_nb && g_seed[i].piece != piece; i++) {}
+    if (i == g_nb) return;                              /* aucun emplacement de la seed dans cette pièce */
+    n = evenements_piece(evts);
+    for (k = 0; k < n; k++) {
+        DWORD o = evts[k];
+        if (!lisible((void *)(o + 0x10), 0x28, 1)) continue;
+        if ((*(DWORD *)(o + 0x30) & 0xFF) != 4) continue;           /* objet à ramasser seulement */
+        memcpy(valeurs, (void *)(o + 0x10), sizeof valeurs);
+        for (i = 0; i < g_nb; i++) {
+            const Emplacement *e = &g_seed[i];
+            if (e->piece != piece || !g_modele_ok[i] || memcmp(e->empreinte, valeurs, sizeof valeurs) != 0) continue;
+            voulu = (e->id << 16) | (e->qte & 0xFFFF);
+            if (*(volatile DWORD *)(o + 0x34) != voulu && (*(DWORD *)(o + 0x34) >> 16) != 0) {
+                DWORD avant = *(volatile DWORD *)(o + 0x34);
+                *(volatile DWORD *)(o + 0x34) = voulu;
+                if (g_messages < 500) {
+                    g_messages++;
+                    journal("Piece %X : evenement mis a jour : id %lu x%lu -> id %lu x%lu", piece,
+                            (unsigned long)(avant >> 16), (unsigned long)(avant & 0xFFFF),
+                            (unsigned long)e->id, (unsigned long)e->qte);
+                }
+            }
+            break;
+        }
+    }
+}
+
 /* --------------------------------------------- mode relevé (Releve=1) */
 
 /* À chaque nouvelle pièce, note dans le journal les objets posés encore présents, sans rien ramasser.
@@ -1168,6 +1209,7 @@ static DWORD WINAPI surveillance(LPVOID inutile)
         if (InterlockedExchange(&g_veille_changee, 0)) parcourir_threads(2);   /* pièges déplacés */
         else if (tour % 4 == 0) parcourir_threads(1);   /* arme les threads créés depuis le dernier passage */
         if (g_diagnostic || g_releve) diagnostic_periodique();
+        if (g_visible && !g_coupe) mettre_a_jour_evenements();
         Sleep(250);
     }
 }
@@ -1184,7 +1226,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.8.7 : demarrage");
+    journal("---- Randomizer RE HD v0.8.8 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
