@@ -29,6 +29,19 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
 
+## Aperçu
+
+<table>
+<tr>
+<td align="center"><img src="images/appli_generer_fr.png" alt="Générer une seed : options et choix des armes" width="420"><br><sub>Générer une seed : options et choix des armes</sub></td>
+<td align="center"><img src="images/appli_installation_fr.png" alt="Installation : la DLL en un clic" width="420"><br><sub>Installation : la DLL en un clic</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="images/appli_spoiler_fr.png" alt="Spoiler : la liste complète des changements" width="420"><br><sub>Spoiler : la liste complète des changements</sub></td>
+<td align="center"><img src="images/appli_info_fr.png" alt="Info : crédits et liens" width="420"><br><sub>Info : crédits et liens</sub></td>
+</tr>
+</table>
+
 ## État : version 0.8.1 (test)
 
 | Pris en charge | À venir |
@@ -282,6 +295,19 @@ or strategies.
 - **7 languages**: English, French, Japanese, Spanish, Portuguese, Russian and Chinese (system language
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
+
+### Screenshots
+
+<table>
+<tr>
+<td align="center"><img src="images/appli_generer_en.png" alt="Generate a seed: options and weapon choice" width="420"><br><sub>Generate a seed: options and weapon choice</sub></td>
+<td align="center"><img src="images/appli_installation_en.png" alt="Installation: the DLL in one click" width="420"><br><sub>Installation: the DLL in one click</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="images/appli_spoiler_en.png" alt="Spoiler: the full list of changes" width="420"><br><sub>Spoiler: the full list of changes</sub></td>
+<td align="center"><img src="images/appli_info_en.png" alt="Info: credits and links" width="420"><br><sub>Info: credits and links</sub></td>
+</tr>
+</table>
 
 ### Status: version 0.8.1 (test)
 
