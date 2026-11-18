@@ -49,13 +49,17 @@ NOMS_OBJETS = {
     3: "Pistolet",
     6: "Fusil",
     17: "Chargeur de pistolet",
+    18: "Munitions de fusil",
+    33: "Spray de premiers secours",
     34: "Herbe verte",
+    35: "Herbe rouge",
     68: "Ruban encreur",
     101: "Trousse de premiers secours",
     112: "Poignard",
+    113: "Grenade aveuglante",
 }
 # Objets toujours mélangés sans risque
-IDS_LIBRES_DE_BASE = {17, 34, 68, 101, 112}
+IDS_LIBRES_DE_BASE = {17, 18, 33, 34, 35, 68, 101, 112, 113}   # 18, 33, 35, 113 ajoutés le 18/11/2026
 # Armes de base du jeu : mélangées seulement avec l'option --armes-aleatoires.
 # (clé du nom dans textes.py, id dans le jeu ou None s'il n'est pas encore relevé, personnage ou None = les deux)
 ARMES = [

@@ -41,12 +41,12 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.4 (test)
+## État : version 0.8.5 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal | Jill, autres difficultés |
-| 46 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
+| 65 emplacements d'objets posés : munitions (pistolet et fusil), herbes vertes et rouges, rubans encreurs, poignards, grenades aveuglantes, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
 | **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles (avec les clés) |
 | Option **armes aléatoires**, avec le choix des armes à mélanger (pour l'instant le pistolet du hall et le fusil du salon) | Les autres armes, **armes bonus** (Samurai Edge et lance-roquettes illimités), ennemis aléatoires |
 | Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | — |
@@ -310,12 +310,12 @@ or strategies.
 </tr>
 </table>
 
-### Status: version 0.8.4 (test)
+### Status: version 0.8.5 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty | Jill, other difficulties |
-| 46 placed-item locations: ammo, herbs, ink ribbons, daggers, first aid boxes | Keys and quest items (with logic that keeps the game completable) |
+| 65 placed-item locations: ammo (handgun and shotgun), green and red herbs, ink ribbons, daggers, flash grenades, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
 | **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items (with keys) |
 | **Random weapons** option, with a choice of which weapons to shuffle (for now the main hall handgun and the living room shotgun) | The other weapons, **bonus weapons** (unlimited Samurai Edge and rocket launcher), random enemies |
 | Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | — |
