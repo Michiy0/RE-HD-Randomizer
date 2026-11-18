@@ -9,7 +9,8 @@ Formats reconnus (on peut en donner plusieurs à la fois, de plusieurs testeurs)
 
 Onglet « Emplacements » : un emplacement = une pièce + son empreinte (8 valeurs fixes), pour un personnage
 et une difficulté. Ceux déjà présents, ou en double dans les journaux, sont ignorés. Les objets « directs »
-(sans empreinte) ne sont pas importés. Les ids absents de l'onglet « Objets » y sont ajoutés « (à nommer) ».
+(sans empreinte) ne sont pas importés. Les ids absents de l'onglet « Objets » y sont ajoutés, avec leur nom
+officiel lu dans les textes du jeu installé (noms_jeu.py) ; « (à nommer) » si le jeu n'est pas trouvé.
 
 Onglet « Pièces relevées » : chaque ligne « Releve piece X : N objet(s) » du mode relevé (même une pièce
 vide) y est notée pour le personnage et la difficulté donnés. Avec --nouvelle-partie, le relevé est
@@ -104,6 +105,20 @@ def deja_connus(ws):
     return connus
 
 
+def noms_du_jeu():
+    """Noms officiels {id: nom} en français et en anglais, lus dans le jeu installé ({} si introuvable)."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import generateur_seed as gen
+        import noms_jeu
+        jeu = gen.trouver_dossier_jeu()
+        if jeu:
+            return noms_jeu.lire_noms(jeu, "fr"), noms_jeu.lire_noms(jeu, "en")
+    except Exception as e:  # jeu absent, autre version des fichiers… : on garde « (à nommer) »
+        print(f"(noms des objets non lus dans le jeu : {e})")
+    return {}, {}
+
+
 def premiere_ligne_libre(ws, colonne):
     derniere = max((r for r in range(2, ws.max_row + 1) if ws.cell(r, colonne).value), default=1)
     return derniere + 1
@@ -134,10 +149,21 @@ def main():
     ws, objets = wb["Emplacements"], wb["Objets"]
     pr = wb["Pièces relevées"] if "Pièces relevées" in wb.sheetnames else None
     connus = deja_connus(ws)
+    # Une zone de ramassage n'appartient qu'à une pièce : celle où elle a été vue en premier. Revue ailleurs,
+    # c'est un « fantôme » : l'objet de la pièce précédente encore en mémoire au moment du relevé (constaté le
+    # 18/11/2026 : l'herbe de l'escalier est (207) notée aussi en 118, 204 et 20B).
+    piece_de_zone = {}                                          # (empreinte, perso, difficulté) -> pièce
+    for ligne in ws.iter_rows(min_row=2, values_only=True):    # les lignes déjà marquées « fantôme » ne comptent pas
+        ligne = tuple(ligne) + (None,) * 14
+        m = MOTIF_EMPREINTE_TABLEUR.search(str(ligne[COL["empreinte"] - 1] or ""))
+        if ligne[COL["piece"] - 1] and m and ligne[COL["chemin"] - 1] != "fantôme":
+            piece_de_zone.setdefault((tuple(v.upper() for v in m.group(1).split()),)
+                                     + scenario_ligne(ligne, COL["personnage"], COL["difficulte"]),
+                                     str(ligne[COL["piece"] - 1]).lower())
     noms_pieces = {str(r[0]).lower(): r[3] for r in wb["Pièces"].iter_rows(min_row=2, values_only=True) if r[0]}
     ids_objets = {objets.cell(r, 1).value for r in range(2, objets.max_row + 1)}
 
-    nouveaux, doublons, directs, visites = [], 0, 0, {}
+    nouveaux, doublons, directs, visites, fantomes = [], 0, 0, {}, []
     for j in args.journaux:
         if not Path(j).exists():
             sys.exit(f"Journal introuvable : {j}")
@@ -150,7 +176,12 @@ def main():
             if cle in connus:
                 doublons += 1
                 continue
+            autre = piece_de_zone.get(cle[1:])
+            if autre and autre != r["piece"]:
+                fantomes.append((r, autre))
+                continue
             connus.add(cle)
+            piece_de_zone[cle[1:]] = r["piece"]
             nouveaux.append(r)
 
     # Pièces relevées : nouvelles lignes, ou passage à « Nouvelle partie = oui »
@@ -172,10 +203,14 @@ def main():
           + (" (nouvelle partie)" if args.nouvelle_partie else " (partie déjà commencée)"))
     print(f"{len(nouveaux)} nouvel(s) emplacement(s), {doublons} déjà connu(s) ou en double"
           + (f", {directs} objet(s) « direct(s) » ignoré(s) (pas d'empreinte)" if directs else "") + ".")
+    for r, autre in fantomes:
+        print(f"  fantôme ignoré : [{r['piece'].upper():>3}] id {r['id']} — zone déjà relevée en {autre.upper()}")
+    noms_apercu = noms_du_jeu()[0] if nouveaux else {}
     for r in nouveaux:
         qte = "?" if r["qte"] is None else r["qte"]
         inconnu = "" if r["id"] in ids_objets else "   <- id nouveau"
-        print(f"  [{r['piece'].upper():>3}] {noms_pieces.get(r['piece'], '?')}: id {r['id']} x{qte}{inconnu}")
+        nom = f" ({noms_apercu[r['id']]})" if r["id"] in noms_apercu else ""
+        print(f"  [{r['piece'].upper():>3}] {noms_pieces.get(r['piece'], '?')}: id {r['id']}{nom} x{qte}{inconnu}")
     if pr is not None:
         print(f"{len(pieces_nouvelles)} pièce(s) relevée(s) à ajouter, {len(pieces_completees)} à marquer complète(s)"
               + (f" : {', '.join(p.upper() for p in pieces_nouvelles + pieces_completees)}"
@@ -202,7 +237,7 @@ def main():
         if not ws.cell(ligne, COL["nom_piece"]).value:
             ws.cell(ligne, COL["nom_piece"]).value = formule("B", "Pièces", "D", ligne, 119)
         if not ws.cell(ligne, COL["nom_obj"]).value:
-            ws.cell(ligne, COL["nom_obj"]).value = formule("E", "Objets", "C", ligne, 52)
+            ws.cell(ligne, COL["nom_obj"]).value = formule("E", "Objets", "C", ligne, 300)
         ws.cell(ligne, COL["piece"]).value = r["piece"]
         ws.cell(ligne, COL["desc"]).value = (f"Objet n°{r['num']} de la pièce, position à décrire"
                                              if r["num"] else "(position à décrire)")
@@ -220,14 +255,19 @@ def main():
         ligne += 1
 
     libre = next((i for i in range(2, objets.max_row + 2) if objets.cell(i, 1).value is None), objets.max_row + 1)
+    noms_fr, noms_en = noms_du_jeu()
     for ident in sorted({r["id"] for r in nouveaux} - ids_objets):
         exemple = next(r for r in nouveaux if r["id"] == ident)
         objets.cell(libre, 1).value = ident
-        objets.cell(libre, 3).value = "(à nommer)"
+        objets.cell(libre, 2).value = f"=DEC2HEX(A{libre})"
+        objets.cell(libre, 3).value = noms_fr.get(ident, "(à nommer)")
         objets.cell(libre, 4).value = "vu en jeu"
         qte = "inconnue" if exemple["qte"] is None else exemple["qte"]
-        objets.cell(libre, 5).value = (f"Posé en {exemple['piece'].upper()}, quantité {qte} "
-                                       f"(import du {date}). Objet à nommer.")
+        objets.cell(libre, 5).value = (f"Posé en {exemple['piece'].upper()}, quantité {qte} (import du {date})."
+                                       + (" Nom tiré des textes du jeu." if ident in noms_fr else " Objet à nommer."))
+        if ident in noms_fr:
+            objets.cell(libre, 6).value = noms_fr[ident]
+            objets.cell(libre, 7).value = noms_en.get(ident)
         libre += 1
 
     if pr is not None:

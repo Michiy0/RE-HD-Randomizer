@@ -49,6 +49,7 @@ FICHIERS = {
     "Randomizer/progression.py": "Randomizer/progression.py",
     "Randomizer/textes.py": "Randomizer/textes.py",
     "Randomizer/mise_a_jour.py": "Randomizer/mise_a_jour.py",
+    "Randomizer/noms_jeu.py": "Randomizer/noms_jeu.py",
     "images/progression.svg": "images/progression.svg",
     "images/appli_generer_fr.png": "images/appli_generer_fr.png",
     "images/appli_installation_fr.png": "images/appli_installation_fr.png",

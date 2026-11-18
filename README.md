@@ -41,14 +41,14 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.3 (test)
+## État : version 0.8.4 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal | Jill, autres difficultés |
-| 34 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
+| 46 emplacements d'objets posés : munitions, herbes, rubans encreurs, poignards, trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
 | **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles (avec les clés) |
-| Option **armes aléatoires**, avec le choix des armes à mélanger (pour l'instant le pistolet du hall) | Les autres armes, **armes bonus** (Samurai Edge et lance-roquettes illimités), ennemis aléatoires |
+| Option **armes aléatoires**, avec le choix des armes à mélanger (pour l'instant le pistolet du hall et le fusil du salon) | Les autres armes, **armes bonus** (Samurai Edge et lance-roquettes illimités), ennemis aléatoires |
 | Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | — |
 
 **Version du jeu requise** : la version Steam actuelle de `bhd.exe` (9 640 360 octets, SHA-256
@@ -70,7 +70,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 |---|---|---|---|---|
 | Chris | Très facile | 0/118 (0 %) | 0 | 0 |
 | Chris | Facile | 0/118 (0 %) | 0 | 0 |
-| Chris | Normal | 0/118 (0 %) | 26 | 73 |
+| Chris | Normal | 40/118 (34 %) | 5 | 109 |
 | Chris | Difficile | 0/118 (0 %) | 0 | 0 |
 | Chris | Real Survival | 0/118 (0 %) | 0 | 0 |
 | Jill | Très facile | 0/118 (0 %) | 0 | 0 |
@@ -225,6 +225,7 @@ DLL/                          la DLL (randomizer.c, xinput1_4.def) et ses script
 Randomizer/
   application.py              l'application (5 onglets, 7 langues)
   mise_a_jour.py              mise à jour automatique depuis les Releases GitHub
+  noms_jeu.py                 noms officiels des objets, lus dans les textes du jeu installé
   generateur_seed.py          génération des seeds (aussi en ligne de commande)
   importer_journal.py         importe les journaux de relevés dans le tableur
   progression.py              barres d'avancement de ce README
@@ -309,14 +310,14 @@ or strategies.
 </tr>
 </table>
 
-### Status: version 0.8.3 (test)
+### Status: version 0.8.4 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty | Jill, other difficulties |
-| 34 placed-item locations: ammo, herbs, ink ribbons, daggers, first aid boxes | Keys and quest items (with logic that keeps the game completable) |
+| 46 placed-item locations: ammo, herbs, ink ribbons, daggers, first aid boxes | Keys and quest items (with logic that keeps the game completable) |
 | **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items (with keys) |
-| **Random weapons** option, with a choice of which weapons to shuffle (for now the main hall handgun) | The other weapons, **bonus weapons** (unlimited Samurai Edge and rocket launcher), random enemies |
+| **Random weapons** option, with a choice of which weapons to shuffle (for now the main hall handgun and the living room shotgun) | The other weapons, **bonus weapons** (unlimited Samurai Edge and rocket launcher), random enemies |
 | Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | — |
 
 **Required game version**: the current Steam `bhd.exe` (9,640,360 bytes, SHA-256
@@ -451,6 +452,7 @@ DLL/                          the DLL (randomizer.c, xinput1_4.def) and its buil
 Randomizer/
   application.py              the app (5 tabs, 7 languages)
   mise_a_jour.py              automatic update from the GitHub Releases
+  noms_jeu.py                 official item names, read from the installed game's texts
   generateur_seed.py          seed generation (also command line)
   importer_journal.py         imports survey logs into the spreadsheet
   progression.py              progress bars of this README

@@ -859,17 +859,46 @@ static int deja_note(DWORD cle)
     return 0;
 }
 
+/* Événements de la pièce courante (liste [scène]+0x3A0 : nombre en +0xD4, tableau en +0xE0). Seuls ces
+ * objets appartiennent vraiment à la pièce : les autres sont des « fantômes » de la pièce précédente, encore
+ * en mémoire au moment du relevé (constaté le 18/11/2026 : l'herbe de l'escalier est notée en 118, 204, 20B).
+ * Renvoie le nombre d'adresses lues, ou -1 si la liste est illisible (on ne filtre pas alors). */
+#define MAX_EVENEMENTS 512
+static int evenements_piece(DWORD *adresses)
+{
+    DWORD scene, liste, nb, tableau;
+    if (!lisible((void *)ADR_SCENE, 4, 0)) return -1;
+    scene = *(DWORD *)ADR_SCENE;
+    if (!scene || !lisible((void *)(scene + 0x3A0 + 0xD4), 0x10, 0)) return -1;
+    liste = scene + 0x3A0;
+    nb = *(DWORD *)(liste + 0xD4);
+    tableau = *(DWORD *)(liste + 0xE0);
+    if (nb == 0 || nb > MAX_EVENEMENTS || !lisible((void *)tableau, nb * 4, 0)) return -1;
+    memcpy(adresses, (void *)tableau, nb * 4);
+    return (int)nb;
+}
+
+static int dans_liste(DWORD adresse, const DWORD *liste, int nb)
+{
+    int i;
+    for (i = 0; i < nb; i++) if (liste[i] == adresse) return 1;
+    return 0;
+}
+
 static void releve_piece(DWORD piece)
 {
     static Trouves r;
-    int k, reels = 0, nouveaux = 0;
+    static DWORD evts[MAX_EVENEMENTS];
+    int k, reels = 0, nouveaux = 0, fantomes = 0, nb_evts;
     DWORD debut = GetTickCount();
 
     r.nb = 0;
     parcourir_memoire(visiter_signature, &r);
+    nb_evts = evenements_piece(evts);
     for (k = 0; k < r.nb; k++) {
         DWORD o[0x40 / 4];
         if (!copier(r.adr[k], o, sizeof o) || !est_objet_reel(o)) continue;
+        if (nb_evts >= 0 && !dans_liste(r.adr[k], evts, nb_evts)) { fantomes++; continue; }
         reels++;
         if (deja_note(empreinte_cle(piece, &o[0x10 / 4]))) continue;
         nouveaux++;
@@ -877,8 +906,10 @@ static void releve_piece(DWORD piece)
                 piece, o[0x34 / 4] >> 16, o[0x34 / 4] & 0xFFFF, o[0x3C / 4], o[0x30 / 4] >> 16, piece,
                 o[4], o[5], o[6], o[7], o[8], o[9], o[10], o[11]);
     }
-    journal("Releve piece %X : %d objet(s) present(s), %d nouveau(x) (%lu ms)", piece, reels, nouveaux,
-            (unsigned long)(GetTickCount() - debut));
+    journal("Releve piece %X : %d objet(s) present(s), %d nouveau(x)%s (%lu ms)", piece, reels, nouveaux,
+            nb_evts < 0 ? ", liste des evenements illisible" :
+            fantomes ? ", fantome(s) ecarte(s)" : "", (unsigned long)(GetTickCount() - debut));
+    if (fantomes) journal("Releve piece %X : %d objet(s) d'une autre piece ignore(s).", piece, fantomes);
 }
 
 /* Appelée régulièrement par le thread de surveillance (modes diagnostic et relevé). */
@@ -1092,7 +1123,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.8 : demarrage");
+    journal("---- Randomizer RE HD v0.8.4 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */

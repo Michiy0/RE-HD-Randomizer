@@ -300,6 +300,15 @@ T = {
     "info_bhdtool": ('BhdTool (eleval) : noms et liaisons des pièces, et aide précieuse pour les relevés.', 'BhdTool (eleval): room names and connections, and a great help for surveys.', 'BhdTool（eleval）：部屋の名前とつながり、調査にも大いに役立ちました。', 'BhdTool (eleval): nombres y conexiones de las salas, y gran ayuda para los registros.', 'BhdTool (eleval): nomes e ligações das salas, e grande ajuda nos levantamentos.', 'BhdTool (eleval): названия и связи комнат, большая помощь при сборе данных.', 'BhdTool（eleval）：房间名称与连接，并为物品记录提供了很大帮助。'),
     "info_inspiration": ("Inspiré des randomizers de la communauté : BioRand et l'ancien randomizer de Benn Powell.", "Inspired by community randomizers: BioRand and Benn Powell's earlier randomizer.", 'コミュニティのランダマイザー（BioRand、Benn Powell 氏の旧ランダマイザー）に着想を得ています。', 'Inspirado en randomizers de la comunidad: BioRand y el antiguo randomizer de Benn Powell.', 'Inspirado nos randomizers da comunidade: BioRand e o antigo randomizer de Benn Powell.', 'Вдохновлено рандомайзерами сообщества: BioRand и прежним рандомайзером Benn Powell.', '灵感来自社区随机器：BioRand 以及 Benn Powell 早期的随机器。'),
     "quitter": ("Quitter", "Quit", "終了", "Salir", "Sair", "Выход", "退出"),
+    "sans_logique": ("Sans logique", "No logic", "ロジックなし", "Sin lógica", "Sem lógica", "Без логики", "无逻辑"),
+    "note_sans_logique": (
+        "Les clés peuvent tomber n'importe où : la partie risque d'être impossible à finir.",
+        "Keys can end up anywhere: the run may be impossible to finish.",
+        "鍵がどこにでも置かれるため、クリアできなくなる可能性があります。",
+        "Las llaves pueden acabar en cualquier sitio: la partida podría no poder terminarse.",
+        "As chaves podem ir para qualquer lugar: a partida pode ficar impossível de terminar.",
+        "Ключи могут оказаться где угодно: игру, возможно, не удастся пройти.",
+        "钥匙可能出现在任何地方：本局可能无法通关。"),
     "graine": ("Graine", "Seed", "シード", "Semilla", "Semente", "Сид", "种子"),
     "au_hasard": ("Au hasard", "Random", "ランダム", "Al azar", "Aleatória", "Случайно", "随机"),
     "note_graine": ("Même graine + mêmes options = même résultat.", "Same seed + same options = same result.",
@@ -675,6 +684,7 @@ T = {
 
     # ------------------------------------------------------------ noms des objets mélangés (spoiler)
     "objet_3": ("Pistolet", "Handgun", "ハンドガン", "Pistola", "Pistola", "Пистолет", "手枪"),
+    "objet_6": ("Fusil", "Shotgun", "ショットガン", "Escopeta", "Espingarda", "Дробовик", "霰弹枪"),
     "objet_17": ("Chargeur de pistolet", "Handgun Bullets", "ハンドガンの弾", "Balas de pistola", "Balas de pistola",
                  "Патроны для пистолета", "手枪子弹"),
     "objet_34": ("Herbe verte", "Green Herb", "グリーンハーブ", "Hierba verde", "Erva verde", "Зелёная трава",

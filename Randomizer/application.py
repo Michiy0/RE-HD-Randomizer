@@ -23,7 +23,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.8.3"
+VERSION = "0.8.4"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
@@ -492,6 +492,7 @@ class Application(tk.Tk):
         # une case par arme de base (cochées par défaut, sauf celles pas encore relevées) ; visibles seulement avec « Armes aléatoires »
         self.armes_cochees = {cle: tk.BooleanVar(value=id_arme is not None) for cle, id_arme, _ in gen.ARMES}
         self.cles = tk.BooleanVar(value=False)
+        self.sans_logique = tk.BooleanVar(value=False)         # option à venir (grisée) : clés sans logique
         self.ennemis = tk.BooleanVar(value=False)              # option à venir (grisée)
         self.armes_bonus = tk.BooleanVar(value=False)          # option à venir (grisée)
         self.graine = tk.StringVar(value=str(gen.tirer_graine()))
@@ -739,6 +740,11 @@ class Application(tk.Tk):
                   justify="left").pack(anchor="w", padx=(27, 0))
         ttk.Checkbutton(o, text=self.t("cles_aleatoires") + a_venir, variable=self.cles,
                         state="disabled").pack(anchor="w", pady=(6, 0))
+        # sous-option des clés : décalée comme la liste des armes
+        ttk.Checkbutton(o, text=self.t("sans_logique") + a_venir, variable=self.sans_logique,
+                        state="disabled").pack(anchor="w", padx=(27, 0))
+        ttk.Label(o, text=self.t("note_sans_logique"), style="Note.TLabel", wraplength=260,
+                  justify="left").pack(anchor="w", padx=(54, 0))
         ttk.Checkbutton(o, text=self.t("ennemis_aleatoires") + a_venir, variable=self.ennemis,
                         state="disabled").pack(anchor="w")
         ttk.Checkbutton(o, text=self.t("armes_bonus") + a_venir, variable=self.armes_bonus,

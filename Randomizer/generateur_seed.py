@@ -47,6 +47,7 @@ FICHIER_PAR_DEFAUT = "donnees_randomizer_RE1.xlsx"
 
 NOMS_OBJETS = {
     3: "Pistolet",
+    6: "Fusil",
     17: "Chargeur de pistolet",
     34: "Herbe verte",
     68: "Ruban encreur",
@@ -59,7 +60,7 @@ IDS_LIBRES_DE_BASE = {17, 34, 68, 101, 112}
 # (clé du nom dans textes.py, id dans le jeu ou None s'il n'est pas encore relevé, personnage ou None = les deux)
 ARMES = [
     ("arme_pistolet", 3, None),
-    ("arme_fusil_pompe", None, None),
+    ("arme_fusil_pompe", 6, None),          # salon (116), x6 : récompense de l'énigme du piège, pas un objet de quête
     ("arme_fusil_assaut", None, None),
     ("arme_lance_grenades", None, "Jill"),
     ("arme_lance_flammes", None, "Chris"),
