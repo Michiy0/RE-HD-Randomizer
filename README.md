@@ -41,7 +41,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.1 (test)
+## État : version 0.8.2 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -79,7 +79,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 | Jill | Difficile | 0/118 (0 %) | 0 | 0 |
 | Jill | Real Survival | 0/118 (0 %) | 0 | 0 |
 
-Armes bonus : 0/2 identifiées. Mis à jour le 17/11/2026.
+Armes bonus : 0/2 identifiées. Mis à jour le 18/11/2026.
 
 </details>
 
@@ -129,6 +129,8 @@ toujours avec Proton.
    Si tu utilises **BhdTool** (ou un autre mod en `dinput8.dll`), coche *Ajouter dinput8.dll* (cochée d'office
    s'il est détecté) : la ligne devient `WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%`.
 4. **Générer la seed**, puis lance le jeu.
+
+L'application peut aussi être ajoutée à Steam comme **jeu non-Steam** pour l'utiliser en **mode Jeu** : le bouton **Quitter**, en haut à droite, la ferme proprement.
 
 > **Testé et confirmé sur Steam Deck** : la DLL fonctionne dans le jeu sous Proton (jeu installé sur la
 > carte SD). En cas de souci, le bouton **Journal du jeu** montre ce qui s'est passé.
@@ -307,7 +309,7 @@ or strategies.
 </tr>
 </table>
 
-### Status: version 0.8.1 (test)
+### Status: version 0.8.2 (test)
 
 | Supported | Coming |
 |---|---|
@@ -362,6 +364,8 @@ The app has a **native Linux** version (no Proton needed for it); the game itsel
    If you use **BhdTool** (or another mod in `dinput8.dll`), tick *Also load dinput8.dll* (ticked
    automatically when it is found): the line becomes `WINEDLLOVERRIDES="xinput1_4=n,b;dinput8=n,b" %command%`.
 4. **Generate seed**, then start the game.
+
+The app can also be added to Steam as a **non-Steam game** to use it in **Game Mode**: the **Quit** button, at the top right, closes it cleanly.
 
 > **Tested and confirmed on Steam Deck**: the DLL works in game under Proton (game installed on the SD
 > card). If something goes wrong, the **Game log** button shows what happened.

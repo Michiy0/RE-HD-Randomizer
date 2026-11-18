@@ -23,7 +23,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
@@ -566,6 +566,10 @@ class Application(tk.Tk):
         self.choix_langue = ttk.Combobox(entete, values=noms, state="readonly", font=(POLICE, 10),
                                          width=max(12, len(auto) + 2))
         self.choix_langue.set(auto if self.preference_langue == "auto" else textes.LANGUES[self.langue.get()])
+        if not SOUS_WINDOWS or os.environ.get("RANDOMIZER_LINUX"):
+            # Steam Deck en mode Jeu : la fenêtre n'a pas de barre de titre, donc pas de croix pour fermer
+            ttk.Button(entete, text=self.t("quitter"), style="Danger.TButton",
+                       command=self.destroy).pack(side="right", padx=(12, 0), pady=(8, 0))
         self.choix_langue.pack(side="right", pady=(8, 0))
         self.choix_langue.bind("<<ComboboxSelected>>", lambda _: self.changer_langue())
         if SOUS_WINDOWS:                            # sous Linux, pas toujours de police d'emoji
