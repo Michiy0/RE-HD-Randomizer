@@ -41,7 +41,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.2 (test)
+## État : version 0.8.3 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -106,7 +106,7 @@ Depuis la **v0.7**, l'application vérifie au démarrage s'il existe une nouvell
 remplace l'application et la relance. Si la DLL du jeu doit aussi être mise à jour, l'application
 s'ouvre sur l'onglet **Installation**.
 
-Si tu as une version plus ancienne (0.6.2 ou avant), télécharge à la main une seule fois la v0.7 ou une version supérieure.
+Si tu as une version plus ancienne (0.6.2 ou avant), télécharge à la main une seule fois la v0.7 ou une version supérieure. Sur Steam Deck / Linux, les versions 0.7 à 0.8.2 ne trouvent pas les mises à jour : télécharge à la main une seule fois la v0.8.3 ou une version supérieure.
 
 > **SmartScreen / antivirus** : l'exe n'est pas signé (projet amateur). Windows peut afficher « Windows a
 > protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*. Certains antivirus
@@ -309,7 +309,7 @@ or strategies.
 </tr>
 </table>
 
-### Status: version 0.8.2 (test)
+### Status: version 0.8.3 (test)
 
 | Supported | Coming |
 |---|---|
@@ -342,7 +342,7 @@ To change seeds: generate a new one, then restart the game.
 **Updates**: since **v0.7**, the app checks for a new version at startup; an **Update** button then
 appears at the top, next to the language selector. One click downloads it, checks it, replaces the app
 and restarts it. If the game's DLL also needs updating, the app opens on the **Installation** tab.
-If you have an older version (0.6.2 or earlier), download v0.7 or a later version manually once.
+If you have an older version (0.6.2 or earlier), download v0.7 or a later version manually once. On Steam Deck / Linux, versions 0.7 to 0.8.2 cannot find updates: download v0.8.3 or a later version manually once.
 
 > **SmartScreen / antivirus**: the exe is not signed (hobby project). Windows may show “Windows protected
 > your PC” → *More info* → *Run anyway*. Some antivirus tools may also flag the DLL by mistake: it uses a

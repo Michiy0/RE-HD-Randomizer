@@ -17,6 +17,7 @@ import json
 import os
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import tarfile
@@ -53,13 +54,37 @@ def programme_actuel():
     return Path(sys.executable).resolve() if getattr(sys, "frozen", False) else None
 
 
+# Certificats racines pour vérifier https. La version Linux est construite sur Ubuntu : l'OpenSSL embarqué
+# les cherche dans /usr/lib/ssl, qui n'existe pas sur SteamOS (Arch) ni sur d'autres distributions. Sans
+# eux, la connexion échoue (CERTIFICATE_VERIFY_FAILED) et aucune mise à jour n'était proposée (Steam Deck,
+# v0.8.1). On donne donc explicitement le fichier du système. Windows utilise son propre magasin.
+CERTIFICATS_LINUX = (
+    "/etc/ssl/certs/ca-certificates.crt",                 # Debian, Ubuntu, Arch, SteamOS
+    "/etc/pki/tls/certs/ca-bundle.crt",                   # Fedora, RHEL
+    "/etc/ssl/ca-bundle.pem",                             # openSUSE
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",  # Fedora récent
+    "/etc/ssl/cert.pem",                                  # Alpine, autres
+)
+_contexte = None
+
+
+def contexte_ssl():
+    global _contexte
+    if _contexte is None:
+        fichier = None
+        if not SOUS_WINDOWS and not os.environ.get("SSL_CERT_FILE"):
+            fichier = next((f for f in CERTIFICATS_LINUX if os.path.isfile(f)), None)
+        _contexte = ssl.create_default_context(cafile=fichier)
+    return _contexte
+
+
 def _ouvrir(url, delai):
     hote = urllib.parse.urlsplit(url).hostname or ""
     if not (url.startswith("https://") and (hote in HOTES_PERMIS or hote == "api.github.com")):
         raise ValueError(f"adresse refusée : {url}")
     req = urllib.request.Request(url, headers={"User-Agent": AGENT, "Accept": "application/octet-stream"
                                                if "api.github.com" not in url else "application/vnd.github+json"})
-    return urllib.request.urlopen(req, timeout=delai)
+    return urllib.request.urlopen(req, timeout=delai, context=contexte_ssl())
 
 
 def chercher(version_locale, delai=6):
