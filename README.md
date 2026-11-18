@@ -41,7 +41,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.6 (test)
+## État : version 0.8.7 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -79,7 +79,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 | Jill | Difficile | 0/118 (0 %) | 0 | 0 |
 | Jill | Real Survival | 0/118 (0 %) | 0 | 0 |
 
-Armes bonus : 0/2 identifiées. Mis à jour le 18/11/2026.
+Armes bonus : 0/2 identifiées. Mis à jour le 19/11/2026.
 
 </details>
 
@@ -310,7 +310,7 @@ or strategies.
 </tr>
 </table>
 
-### Status: version 0.8.6 (test)
+### Status: version 0.8.7 (test)
 
 | Supported | Coming |
 |---|---|

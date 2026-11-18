@@ -53,6 +53,13 @@ static long  g_graine = -1;
 static int   g_armes = -1;               /* -1 inconnu, 0 non, 1 oui */
 static int   g_visible_seed;              /* objets_visibles = true dans la seed */
 
+/* Modèles décoratifs à remplacer : dans la pièce « salle », un modèle de l'objet « ancien » devient « nouveau »
+ * (lignes « salle = …, ancien = …, nouveau = … » de la seed, v0.8.7+). */
+#define MAX_DECORS 512
+typedef struct { DWORD piece, ancien, nouveau; BYTE ok; } Decor;
+static Decor g_decors[MAX_DECORS];
+static int   g_nb_decors;
+
 static char  g_dossier[MAX_PATH];        /* dossier du jeu, avec la barre oblique finale */
 static char  g_journal[MAX_PATH];
 static CRITICAL_SECTION g_verrou_journal;
@@ -134,6 +141,14 @@ static int charger_seed(const char *chemin)
         } else if (strstr(ligne, "graine =")) {
             DWORD v[1];
             if (lire_nombres(ligne, v, 1) == 1) g_graine = (long)v[0];
+        } else if (strstr(ligne, "salle =")) {
+            DWORD v[4];
+            if (lire_nombres(ligne, v, 4) == 3 && g_nb_decors < MAX_DECORS) {
+                g_decors[g_nb_decors].piece = v[0];
+                g_decors[g_nb_decors].ancien = v[1];
+                g_decors[g_nb_decors].nouveau = v[2];
+                g_decors[g_nb_decors++].ok = 0;
+            }
         } else if (strstr(ligne, "objets_visibles =")) {
             g_visible_seed = strstr(ligne, "true") ? 1 : 0;
         } else if (strstr(ligne, "armes_aleatoires =")) {
@@ -230,6 +245,12 @@ static void traiter_objet(DWORD structure)
 #ifndef ADR_SPAWN2
 #define ADR_SPAWN2      (BASE_JEU + 0x81830u)
 #endif
+/* Troisième fonction : crée seulement un MODÈLE décoratif à partir d'un id (+4 sur la pile), sans objet à
+ * ramasser. Appelée par 77 endroits, dont le fusil accroché au mur du salon (116) : le ramassage donnait bien
+ * le nouvel objet, mais le mur montrait le fusil et l'aperçu restait noir (aucun modèle du nouvel objet). */
+#ifndef ADR_DECOR
+#define ADR_DECOR       (BASE_JEU + 0x81F10u)
+#endif
 #ifndef ADR_SCENE
 #define ADR_SCENE       (BASE_JEU + 0x8F2FC8u)   /* objet « scène » ; +0x3A0 = liste des événements */
 #endif
@@ -299,8 +320,35 @@ static void ajouter_modeles(void)
             HeapFree(GetProcessHeap(), 0, neuve);
         }
     }
+    for (i = 0; i < g_nb_decors; i++) {             /* décor : le modèle du nouvel objet doit exister */
+        char nom[16], chemin[MAX_PATH];
+        _snprintf(nom, sizeof nom, "i%03lup", (unsigned long)g_decors[i].nouveau);
+        _snprintf(chemin, MAX_PATH, "%snativePC\\arc\\model\\item\\%s.arc", g_dossier, nom);
+        for (j = 0; j < g_nb; j++)                      /* et être chargé dans la pièce (objet de la seed) */
+            if (g_seed[j].piece == g_decors[i].piece && g_seed[j].id == g_decors[i].nouveau && g_modele_ok[j]) break;
+        g_decors[i].ok = j < g_nb && GetFileAttributesA(chemin) != INVALID_FILE_ATTRIBUTES;
+    }
     journal("Objets visibles : %d modele(s) ajoute(s) dans %d piece(s) ; %d emplacement(s) sans modele "
             "(remplaces seulement au ramassage).", ajouts, pieces, sans_modele);
+}
+
+/* Appelée à l'entrée de la fonction des modèles décoratifs (ESP = adresse de retour, +4 = id). */
+static void remplacer_decor(CONTEXT *c)
+{
+    DWORD esp = c->Esp, piece, id;
+    int i;
+    if (!lisible((void *)esp, 8, 1) || !piece_actuelle(&piece)) return;
+    id = *(DWORD *)(esp + 4);
+    for (i = 0; i < g_nb_decors; i++)
+        if (g_decors[i].piece == piece && g_decors[i].ancien == id && g_decors[i].ok) {
+            *(DWORD *)(esp + 4) = g_decors[i].nouveau;
+            if (g_messages < 500) {
+                g_messages++;
+                journal("Piece %X : modele decoratif remplace : id %lu -> id %lu", piece,
+                        (unsigned long)id, (unsigned long)g_decors[i].nouveau);
+            }
+            return;
+        }
 }
 
 /* Appelée à l'entrée de SpawnItem (ESP = adresse de retour). */
@@ -945,6 +993,12 @@ static LONG CALLBACK gestionnaire(EXCEPTION_POINTERS *ep)
     CONTEXT *c = ep->ContextRecord;
     if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
         return EXCEPTION_CONTINUE_SEARCH;
+    if (c->Eip == ADR_DECOR && g_veille[2] == ADR_DECOR) {   /* modèle décoratif (Visible=1) */
+        c->Dr6 = 0;
+        if (!g_coupe) remplacer_decor(c);
+        c->EFlags |= 0x10000;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
     if ((c->Eip == ADR_SPAWN && g_veille[0] == ADR_SPAWN)    /* placement d'un objet (Visible=1) */
         || (c->Eip == ADR_SPAWN2 && g_veille[1] == ADR_SPAWN2)) {
         c->Dr6 = 0;
@@ -1130,7 +1184,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.8.6 : demarrage");
+    journal("---- Randomizer RE HD v0.8.7 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
@@ -1189,6 +1243,8 @@ static void demarrer(void)
         g_veille_cond[0] = 0;
         g_veille[1] = ADR_SPAWN2;                 /* DR2 : exécution (objets spéciaux) */
         g_veille_cond[1] = 0;
+        g_veille[2] = ADR_DECOR;                  /* DR3 : exécution (modèles décoratifs) */
+        g_veille_cond[2] = 0;
         journal("Objets visibles : les objets poses sont remplaces avant la creation de leur modele.");
     }
     if (g_pieges) {

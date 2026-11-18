@@ -269,6 +269,20 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
         emp = ", ".join("0x" + v.upper() for v in r["empreinte"])
         lua.append(f"    {{ piece = 0x{r['piece'].upper()}, empreinte = {{ {emp} }}, "
                    f"id = {r['nouveau']['id']}, qte = {r['nouveau']['quantite']} }},")
+    lua.append("  },")
+    # Modèles décoratifs (ex. fusil accroché au mur du salon) : le jeu les crée à part, à partir de l'id d'origine.
+    # La DLL (v0.8.7+) remplace le modèle « ancien » de la pièce par le « nouveau ». Clé « salle » (et non
+    # « piece ») : les DLL plus anciennes ignorent ces lignes. Une pièce où le même objet d'origine devient deux
+    # objets différents est laissée de côté (on ne saurait pas quel modèle remplacer).
+    decors = {}
+    for r in resultat:
+        cle = (r["piece"].upper(), r["ancien"]["id"])
+        if r["ancien"]["id"] != r["nouveau"]["id"]:
+            decors.setdefault(cle, set()).add(r["nouveau"]["id"])
+    lua.append("  decors = {")
+    for (piece, ancien), nouveaux in sorted(decors.items()):
+        if len(nouveaux) == 1:
+            lua.append(f"    {{ salle = 0x{piece}, ancien = {ancien}, nouveau = {next(iter(nouveaux))} }},")
     lua += ["  },", "}"]
     fichier_lua = sortie_dir / f"{nom}.lua"
     fichier_lua.write_text("\n".join(lua) + "\n", encoding="utf-8")
