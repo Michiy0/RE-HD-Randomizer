@@ -106,7 +106,7 @@ Depuis la **v0.7**, l'application vérifie au démarrage s'il existe une nouvell
 remplace l'application et la relance. Si la DLL du jeu doit aussi être mise à jour, l'application
 s'ouvre sur l'onglet **Installation**.
 
-Si tu as une version plus ancienne (0.6.2 ou avant), télécharge la v0.7 à la main une seule fois.
+Si tu as une version plus ancienne (0.6.2 ou avant), télécharge à la main une seule fois la v0.7 ou une version supérieure.
 
 > **SmartScreen / antivirus** : l'exe n'est pas signé (projet amateur). Windows peut afficher « Windows a
 > protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*. Certains antivirus
@@ -340,7 +340,7 @@ To change seeds: generate a new one, then restart the game.
 **Updates**: since **v0.7**, the app checks for a new version at startup; an **Update** button then
 appears at the top, next to the language selector. One click downloads it, checks it, replaces the app
 and restarts it. If the game's DLL also needs updating, the app opens on the **Installation** tab.
-If you have an older version (0.6.2 or earlier), download v0.7 manually once.
+If you have an older version (0.6.2 or earlier), download v0.7 or a later version manually once.
 
 > **SmartScreen / antivirus**: the exe is not signed (hobby project). Windows may show “Windows protected
 > your PC” → *More info* → *Run anyway*. Some antivirus tools may also flag the DLL by mistake: it uses a
