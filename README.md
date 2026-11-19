@@ -115,10 +115,7 @@ Bonus weapons: 2/2 identified. Updated 2026-11-19.
 
 To change seeds: generate a new one, then restart the game.
 
-**Updates**: since **v0.7**, the app checks for a new version at startup; an **Update** button then
-appears at the top, next to the language selector. One click downloads it, checks it, replaces the app
-and restarts it. If the game's DLL also needs updating, the app opens on the **Installation** tab.
-If you have v0.8.10 or earlier, download the latest version manually once: the program was renamed in v0.9.0 (`Resident Evil HD Remaster Randomizer`) and older versions cannot update to it on their own.
+**Updates**: the app updates itself automatically since **v0.7**.
 
 > **SmartScreen / antivirus**: the exe is not signed (hobby project). Windows may show “Windows protected
 > your PC” → *More info* → *Run anyway*. Some antivirus tools may also flag the DLL by mistake: it uses a
@@ -416,12 +413,7 @@ Pour changer de seed : en générer une nouvelle, puis relancer le jeu.
 
 ### Mises à jour
 
-Depuis la **v0.7**, l'application vérifie au démarrage s'il existe une nouvelle version : un bouton
-**Mise à jour** apparaît alors en haut, à côté du choix de langue. Un clic la télécharge, la vérifie,
-remplace l'application et la relance. Si la DLL du jeu doit aussi être mise à jour, l'application
-s'ouvre sur l'onglet **Installation**.
-
-Si tu as la v0.8.10 ou une version plus ancienne, télécharge à la main une seule fois la dernière version : le programme a changé de nom en v0.9.0 (`Resident Evil HD Remaster Randomizer`) et les anciennes versions ne peuvent pas s'y mettre à jour toutes seules.
+L'application se met à jour automatiquement depuis la **v0.7**.
 
 > **SmartScreen / antivirus** : l'exe n'est pas signé (projet amateur). Windows peut afficher « Windows a
 > protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*. Certains antivirus
