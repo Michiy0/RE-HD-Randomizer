@@ -31,7 +31,7 @@ or strategies.
 
 ## Screenshots
 
-<p align="center"><img src="images/avant_apres.gif" alt="Same room in the original game and with the randomizer: the dagger on the table becomes a green herb" width="720"><br><sub>Same room, original game vs randomizer: the dagger on the table is now a green herb, visible right away</sub></p>
+<p align="center"><img src="images/avant_apres.gif" alt="Same room in the original game and with the randomizer: the dagger on the table becomes a green herb and the shotgun on the wall is replaced" width="720"><br><sub>Same room, original game vs randomizer: the dagger on the table is now a green herb, and the shotgun on the wall has been replaced too — visible right away, no need to pick them up</sub></p>
 
 <table>
 <tr>
@@ -328,7 +328,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 
 ## Aperçu
 
-<p align="center"><img src="images/avant_apres.gif" alt="La même pièce dans le jeu d'origine et avec le randomizer : le poignard sur la table devient une herbe verte" width="720"><br><sub>La même pièce, jeu d'origine et randomizer : le poignard sur la table est devenu une herbe verte, visible tout de suite</sub></p>
+<p align="center"><img src="images/avant_apres.gif" alt="La même pièce dans le jeu d'origine et avec le randomizer : le poignard sur la table devient une herbe verte et le fusil du mur est remplacé" width="720"><br><sub>La même pièce, jeu d'origine et randomizer : le poignard sur la table est devenu une herbe verte, et le fusil accroché au mur a lui aussi été remplacé — visibles tout de suite, sans avoir à les ramasser</sub></p>
 
 <table>
 <tr>
