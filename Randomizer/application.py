@@ -25,7 +25,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.9.0"
+VERSION = "0.9.1"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
@@ -322,6 +322,10 @@ def dessiner_icone(nom, couleur, taille=16):
             coeur = min(cercle(x, y, 5.4, 6.2, 3.1), cercle(x, y, 10.6, 6.2, 3.1),
                         triangle(x, y, (2.45, 7.2), (13.55, 7.2), (8, 13.6)))
             return abs(coeur) - trait
+        if nom == "reseau":
+            return min(seg(x, y, (4, 11.5), (8, 4.5)) - trait * 0.8, seg(x, y, (8, 4.5), (12, 11.5)) - trait * 0.8,
+                       seg(x, y, (4, 11.5), (12, 11.5)) - trait * 0.8,
+                       cercle(x, y, 8, 4.5, 2.4), cercle(x, y, 4, 11.5, 2.4), cercle(x, y, 12, 11.5, 2.4))
         if nom == "info":
             return min(abs(cercle(x, y, 8, 8, 6.3)) - trait, cercle(x, y, 8, 5.2, 1.0),
                        seg(x, y, (8, 7.6), (8, 11.3)) - trait)
@@ -345,7 +349,7 @@ def creer_icones_onglets(racine):
     if getattr(racine, "_icones_onglets", None):
         return racine._icones_onglets
     garde, specs = [], {}
-    for nom in ("telechargement", "de", "oeil", "coeur", "info"):
+    for nom in ("telechargement", "de", "oeil", "reseau", "coeur", "info"):
         normal, blanc, grise = (tk.PhotoImage(master=racine, data=dessiner_icone(nom, coul))
                                 for coul in (c["discret"], "#ffffff", c["grise"]))
         garde += [normal, blanc, grise]
@@ -768,15 +772,18 @@ class Application(tk.Tk):
         page_aide = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
         icones = creer_icones_onglets(self)
         page_info = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
+        page_archipelago = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
         for page, cle, icone in ((self.page_install, "onglet_installation", "telechargement"),
                                  (self.page_generer, "onglet_generer", "de"),
                                  (self.page_spoiler, "onglet_spoiler", "oeil"),
+                                 (page_archipelago, "onglet_archipelago", "reseau"),
                                  (page_aide, "onglet_aide", "coeur"),
                                  (page_info, "onglet_info", "info")):
             self.onglets.add(page, text=" " + self.t(cle), image=icones[icone], compound="left")
         self.construire_installation(self.page_install)
         self.construire_generation(self.page_generer)
         self.construire_spoiler(self.page_spoiler)
+        self.construire_archipelago(page_archipelago)
         self.construire_aide(page_aide)
         self.construire_info(page_info)
 
@@ -1255,6 +1262,59 @@ class Application(tk.Tk):
         self.lien(m, "→  github.com/eleval/BhdTool", "https://github.com/eleval/BhdTool").pack(anchor="w", pady=(2, 8))
         ttk.Label(m, text=self.t("info_inspiration"), style="Carte.TLabel", wraplength=660, justify="left"
                   ).pack(anchor="w")
+
+    # --- onglet « Archipelago » : préparé pour plus tard (champs grisés, liste de ce qu'il reste à faire)
+    def construire_archipelago(self, page):
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        defile = Defilable(page)
+        defile.grid(row=0, column=0, sticky="nsew")
+        cadre = defile.interieur
+        cadre.columnconfigure(0, weight=1)
+
+        intro, i = self.carte(cadre, self.t("carte_archipelago"))
+        intro.grid(row=0, column=0, sticky="nsew")
+        ttk.Label(i, text=self.t("ap_intro"), style="Carte.TLabel", wraplength=640, justify="left"
+                  ).pack(anchor="w", fill="x")
+        self.lien(i, "→  archipelago.gg", "https://archipelago.gg").pack(anchor="w", pady=(8, 0))
+
+        # connexion : tout est prêt mais grisé tant que le support n'existe pas
+        connexion, c = self.carte(cadre, self.t("carte_ap_connexion"))
+        connexion.grid(row=1, column=0, sticky="nsew", pady=(16, 0))
+        c.columnconfigure(1, weight=1)
+        self.ap_serveur = tk.StringVar(value="archipelago.gg:38281")
+        self.ap_joueur = tk.StringVar()
+        self.ap_mot_de_passe = tk.StringVar()
+        self.ap_deathlink = tk.BooleanVar(value=False)
+        for ligne, (cle, variable, cache) in enumerate((("ap_serveur", self.ap_serveur, False),
+                                                        ("ap_joueur", self.ap_joueur, False),
+                                                        ("ap_mot_de_passe", self.ap_mot_de_passe, True))):
+            ttk.Label(c, text=self.t(cle), style="Carte.TLabel").grid(row=ligne, column=0, sticky="w",
+                                                                    pady=4, padx=(0, 12))
+            champ = ttk.Entry(c, textvariable=variable, width=36, font=(POLICE, 11), show="•" if cache else "")
+            champ.grid(row=ligne, column=1, sticky="w", pady=4)
+            champ.state(["disabled"])
+        ttk.Checkbutton(c, text=self.t("ap_deathlink"), variable=self.ap_deathlink, state="disabled"
+                        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        bas = ttk.Frame(c, style="Carte.TFrame", borderwidth=0)
+        bas.grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        bouton = ttk.Button(bas, text=self.t("ap_connecter"), style="Accent.TButton")
+        bouton.pack(side="left")
+        bouton.state(["disabled"])
+        ttk.Label(bas, text=self.t("ap_etat"), style="Note.TLabel").pack(side="left", padx=(12, 0))
+
+        # ce qu'il reste à faire pour qu'Archipelago fonctionne
+        reste, r = self.carte(cadre, self.t("carte_ap_avancement"))
+        reste.grid(row=2, column=0, sticky="nsew", pady=(16, 0))
+        couleurs = {"ap_fait": "Ok.TLabel", "ap_en_cours": "Alerte.TLabel", "ap_a_faire": "Neutre.TLabel"}
+        for etape, etat in (("ap_etape_releves", "ap_en_cours"), ("ap_etape_cles", "ap_a_faire"),
+                            ("ap_etape_envoyer", "ap_a_faire"), ("ap_etape_recevoir", "ap_a_faire"),
+                            ("ap_etape_monde", "ap_a_faire"), ("ap_etape_objectif", "ap_a_faire")):
+            ligne = ttk.Frame(r, style="Carte.TFrame", borderwidth=0)
+            ligne.pack(anchor="w", fill="x", pady=2)
+            ttk.Label(ligne, text=f"●  {self.t(etat)}", style=couleurs[etat], width=16).pack(side="left")
+            ttk.Label(ligne, text=self.t(etape), style="Carte.TLabel", wraplength=560, justify="left"
+                      ).pack(side="left")
 
     # --- onglet « Aider le projet » : mode relevé et avancement des relevés
     def construire_aide(self, page):

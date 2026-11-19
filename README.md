@@ -26,6 +26,8 @@ or strategies.
 - **7 languages**: English, French, Japanese, Spanish, Portuguese, Russian and Chinese (system language
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
+- **Archipelago support coming**: the randomizer is being prepared for [Archipelago](https://archipelago.gg),
+  the multi-game randomizer (see [Archipelago](#archipelago-coming-soon)).
 
 ## Screenshots
 
@@ -39,19 +41,34 @@ or strategies.
 </tr>
 </table>
 
-## Status: version 0.9.0 (test)
+## Status: version 0.9.1 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty | Jill, other difficulties |
 | 124 placed-item locations: ammo (handgun and shotgun), green and red herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
 | **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items (with keys) |
-| **Random weapons** option, with a choice of which weapons to shuffle (handgun, shotgun, assault shotgun) and a **guaranteed starting weapon** option | The other weapons, **bonus weapons** (unlimited Samurai Edge and rocket launcher), random enemies |
-| Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | — |
+| **Random weapons** option, with a choice of which weapons to shuffle (handgun, shotgun, assault shotgun) and a **guaranteed starting weapon** option | The other weapons (grenade launcher, flamethrower, magnums), random enemies |
+| **Fun** section: **bonus weapons** (unlimited Samurai Edge and rocket launcher, each replacing a random item) | — |
+| Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | **[Archipelago](#archipelago-coming-soon)** support |
 
 **Required game version**: the current Steam `bhd.exe` (9,640,360 bytes, SHA-256
 `39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A`). The app checks it; on any other
 version the randomizer stays inactive and the game is untouched.
+
+## Archipelago (coming soon)
+
+[Archipelago](https://archipelago.gg) is a multi-game randomizer: the items of your game can end up in other
+players' games (and the other way round), each on their own game, at the same time. Support for Resident Evil
+HD Remaster is being prepared.
+
+- **Already in the app**: an *Archipelago* tab with the connection form (server, player name, password,
+  DeathLink), greyed out for now, and the list of what is left to do.
+- **Still to do**: keys and quest items shuffled with logic (this comes first), reporting each picked-up
+  location to the server, receiving other players' items into the inventory, the game's Archipelago "world"
+  (`.apworld` file: items, locations, rules) and sending the goal (ending) to the server.
+
+No date yet: the keys-with-logic step has to be finished first.
 
 ## Survey progress
 
@@ -132,23 +149,26 @@ option). “Remove the installed seed” only removes the seed: without a seed, 
 
 ## Usage
 
-The app has five tabs, and a language selector at the top right (“Automatic” = system language, English
+The app has six tabs, and a language selector at the top right (“Automatic” = system language, English
 otherwise).
 
 - **Installation** — game folder, randomizer and installed seed status, install / update / uninstall the
   DLL (and the launch option on Steam Deck). The app opens here until the DLL is installed and up to date.
 - **Generate a seed** — unlocked once the DLL is in place:
   - *Playthrough*: character and difficulty;
-  - *Options*: random weapons (ticking it shows the weapon list; untick those that should stay in place),
-    items visible on the ground (ticked by default; unticked, you see the original item until pickup),
-    seed (or “Random”) — same seed + same options = same result;
-  - **Generate seed**: writes the seed to the `seeds` folder and installs it in the game.
-- **Spoiler** — unlocked as soon as there is a seed: the full list of changes (“room: original item → new
-  item”), hidden until you tick *Show spoiler*.
+  - *Options*: items visible on the ground (ticked by default; unticked, you see the original item until
+    pickup), random weapons (ticking it shows the weapon list; untick those that should stay in place) and
+    guaranteed starting weapon;
+  - *Fun*: bonus weapons (choose the Samurai Edge, the rocket launcher or both);
+  - **Generate seed**, with the seed (or “Random”) next to it — same seed + same options = same result: writes
+    the seed to the `seeds` folder and installs it in the game.
+- **Spoiler** — unlocked as soon as there is a seed: the full list of changes as a table (location, original
+  item, replacement), with search and sorting, hidden until you tick *Show spoiler*.
+- **Archipelago** — coming soon: the connection form (greyed out) and what is left to do.
 - **Help the project** — survey mode and the progress bars (see below).
 - **Info** — the credits (author, testers, thanks) and a link to this page.
 
-Options marked “coming soon” (keys, enemies, bonus weapons, other weapons…) are visible but greyed out.
+Options marked “coming soon” (keys, enemies, other weapons, Archipelago…) are visible but greyed out.
 
 ### Compatibility
 
@@ -301,6 +321,8 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
   par défaut).
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
+- **Support d'Archipelago à venir** : le randomizer se prépare pour [Archipelago](https://archipelago.gg),
+  le randomizer multi-jeux (voir [Archipelago](#archipelago-à-venir)).
 
 ## Aperçu
 
@@ -314,19 +336,35 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.9.0 (test)
+## État : version 0.9.1 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal | Jill, autres difficultés |
 | 124 emplacements d'objets posés : munitions (pistolet et fusil), herbes vertes et rouges, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
 | **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles (avec les clés) |
-| Option **armes aléatoires**, avec le choix des armes à mélanger (pistolet, fusil, fusil d'assaut) et option **arme garantie au départ** | Les autres armes, **armes bonus** (Samurai Edge et lance-roquettes illimités), ennemis aléatoires |
-| Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | — |
+| Option **armes aléatoires**, avec le choix des armes à mélanger (pistolet, fusil, fusil d'assaut) et option **arme garantie au départ** | Les autres armes (lance-grenades, lance-flammes, magnums), ennemis aléatoires |
+| Section **Fun** : **armes bonus** (Samurai Edge et lance-roquettes illimités, chacun à la place d'un objet au hasard) | — |
+| Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | Support d'**[Archipelago](#archipelago-à-venir)** |
 
 **Version du jeu requise** : la version Steam actuelle de `bhd.exe` (9 640 360 octets, SHA-256
 `39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A`). L'application le vérifie ; sur une
 autre version, le randomizer se met en veille et le jeu reste intact.
+
+## Archipelago (à venir)
+
+[Archipelago](https://archipelago.gg) est un randomizer multi-jeux : les objets de ta partie peuvent se
+retrouver dans le jeu d'autres joueurs (et inversement), chacun sur son propre jeu, en même temps. Le support
+de Resident Evil HD Remaster est en préparation.
+
+- **Déjà dans l'application** : un onglet *Archipelago* avec le formulaire de connexion (serveur, nom du
+  joueur, mot de passe, DeathLink), grisé pour l'instant, et la liste de ce qu'il reste à faire.
+- **Reste à faire** : le mélange des clés et objets de quête avec la logique (en premier), l'envoi au serveur
+  de chaque emplacement ramassé, la réception dans l'inventaire des objets des autres joueurs, le « monde »
+  Archipelago du jeu (fichier `.apworld` : objets, emplacements, règles) et l'envoi de l'objectif (fin du jeu)
+  au serveur.
+
+Pas encore de date : le mélange des clés avec la logique doit être terminé avant.
 
 ## Avancement des relevés
 
@@ -415,7 +453,7 @@ Dans l'application : **Désinstaller la DLL** (sur Steam Deck, retire aussi l'op
 
 ## Utilisation
 
-L'application a cinq onglets, et un sélecteur de langue en haut à droite (« Automatique » = langue du
+L'application a six onglets, et un sélecteur de langue en haut à droite (« Automatique » = langue du
 système, anglais sinon).
 
 - **Installation** — dossier du jeu, état du randomizer et de la seed installée, installer / mettre à
@@ -423,16 +461,20 @@ système, anglais sinon).
   que la DLL n'est pas installée et à jour.
 - **Générer une seed** — débloqué une fois la DLL en place :
   - *Partie* : personnage et difficulté ;
-  - *Options* : armes aléatoires (cocher la case affiche la liste des armes ; décoche celles qui doivent
-    rester à leur place), objets visibles par terre (cochée d'office ; décochée, on voit l'objet d'origine
-    jusqu'au ramassage), graine (ou « Au hasard ») — même graine + mêmes options = même résultat ;
-  - **Générer la seed** : écrit la seed dans le dossier `seeds` et l'installe dans le jeu.
-- **Spoiler** — débloqué dès qu'il y a une seed : la liste complète des changements (« pièce : objet
-  d'origine → nouvel objet »), cachée tant qu'on ne coche pas *Afficher le spoiler*.
+  - *Options* : objets visibles par terre (cochée d'office ; décochée, on voit l'objet d'origine jusqu'au
+    ramassage), armes aléatoires (cocher la case affiche la liste des armes ; décoche celles qui doivent
+    rester à leur place) et arme garantie au départ ;
+  - *Fun* : armes bonus (au choix le Samurai Edge, le lance-roquettes ou les deux) ;
+  - **Générer la seed**, avec la graine (ou « Au hasard ») juste à côté — même graine + mêmes options = même
+    résultat : écrit la seed dans le dossier `seeds` et l'installe dans le jeu.
+- **Spoiler** — débloqué dès qu'il y a une seed : la liste complète des changements en tableau (lieu, objet
+  d'origine, objet qui le remplace), avec recherche et tri, cachée tant qu'on ne coche pas *Afficher le
+  spoiler*.
+- **Archipelago** — à venir : le formulaire de connexion (grisé) et ce qu'il reste à faire.
 - **Aider le projet** — le mode relevé et les barres d'avancement (voir plus bas).
 - **Info** — les crédits (auteur, testeurs, remerciements) et le lien vers cette page.
 
-Les options marquées « à venir » (clés, ennemis, armes bonus, autres armes…) sont visibles mais grisées.
+Les options marquées « à venir » (clés, ennemis, autres armes, Archipelago…) sont visibles mais grisées.
 
 ### Compatibilité
 

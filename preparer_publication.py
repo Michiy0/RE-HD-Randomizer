@@ -66,9 +66,9 @@ FICHIERS = {
     "Randomizer/creer_logo.py": "Randomizer/creer_logo.py",
     "Randomizer/logo.png": "Randomizer/logo.png",
     "Randomizer/logo_entete.png": "Randomizer/logo_entete.png",
-    "Randomizer/appliquer_seed.lua": "outils/cheat_engine/appliquer_seed.lua",
-    "journal_objets.lua": "outils/cheat_engine/journal_objets.lua",
-    "test_remplacement.lua": "outils/cheat_engine/test_remplacement.lua",
+    "outils/cheat_engine/appliquer_seed.lua": "outils/cheat_engine/appliquer_seed.lua",
+    "outils/cheat_engine/journal_objets.lua": "outils/cheat_engine/journal_objets.lua",
+    "outils/cheat_engine/test_remplacement.lua": "outils/cheat_engine/test_remplacement.lua",
 }
 ONGLETS_RETIRES = ["Vocabulaire Benn"]
 
