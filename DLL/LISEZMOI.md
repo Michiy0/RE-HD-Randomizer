@@ -1,7 +1,7 @@
-# DLL du randomizer (sans Cheat Engine) — v0.1
+# DLL du randomizer — v0.1
 
 ## Installation
-Le plus simple : `Randomizer\dist\RandomizerREHD.exe`, bouton « Installer la DLL », puis « Générer la seed »
+Le plus simple : `Randomizer\dist\Resident Evil HD Remaster Randomizer.exe`, bouton « Installer la DLL », puis « Générer la seed »
 (case « Installer la seed dans le jeu » cochée).
 
 À la main, dans le dossier du jeu (`...\steamapps\common\Resident Evil Biohazard HD REMASTER\`) :

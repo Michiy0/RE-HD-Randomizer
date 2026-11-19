@@ -1,5 +1,5 @@
 #!/bin/sh
-# Construit RandomizerREHD-linux (un seul fichier, à lancer sur Linux ou Steam Deck en mode Bureau).
+# Construit Resident Evil HD Remaster Randomizer (un seul fichier, à lancer sur Linux ou Steam Deck en mode Bureau).
 # Prérequis une seule fois (Ubuntu / WSL) :
 #   sudo apt install python3 python3-venv python3-tk gcc-mingw-w64-i686
 # Le script crée son propre environnement Python (openpyxl, pyinstaller) dans ~/.randomizer-venv.
@@ -16,10 +16,11 @@ if [ ! -x "$VENV/bin/python" ]; then
     "$VENV/bin/pip" install --quiet openpyxl pyinstaller
 fi
 
-"$VENV/bin/python" -m PyInstaller --noconfirm --clean --onefile --windowed --name RandomizerREHD-linux \
-    --distpath "$ICI/dist" --workpath /tmp/randomizer_build --specpath /tmp/randomizer_build \
+"$VENV/bin/python" -m PyInstaller --noconfirm --clean --onefile --windowed --name "Resident Evil HD Remaster Randomizer" \
+    --add-data "$ICI/logo_entete.png:." \
+    --distpath "$ICI/dist" --workpath /tmp/rehdr_randomizer_build --specpath /tmp/rehdr_randomizer_build \
     --add-data "$ICI/../donnees_randomizer_RE1.xlsx:." \
     --add-data "$ICI/../DLL/xinput1_4.dll:." \
     --add-data "$ICI/icone.png:." \
     application.py
-echo "OK : $ICI/dist/RandomizerREHD-linux"
+echo "OK : $ICI/dist/Resident Evil HD Remaster Randomizer"

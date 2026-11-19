@@ -27,9 +27,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-DEPOT = "Michiy0/RE-HD-Randomizer"
+DEPOT = "Michiy0/Resident-Evil-HD-Remaster-Randomizer"
 API = f"https://api.github.com/repos/{DEPOT}/releases?per_page=20"
-AGENT = "RandomizerREHD-maj"
+AGENT = "ResidentEvilHDRemasterRandomizer-maj"
 SOUS_WINDOWS = sys.platform == "win32"
 SUFFIXE = "-windows.zip" if SOUS_WINDOWS else "-linux.tar.gz"
 HOTES_PERMIS = ("github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")
@@ -113,7 +113,7 @@ def chercher(version_locale, delai=6):
 def telecharger(info, cible, progres=lambda fraction: None):
     """Télécharge l'archive, la vérifie et en extrait le programme en « <cible>.nouveau ». Renvoie ce chemin."""
     nouveau = cible.with_name(cible.name + ".nouveau")
-    with tempfile.TemporaryDirectory(prefix="randomizer_maj_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="rehdr_randomizer_maj_") as tmp:
         archive = Path(tmp) / info["nom"]
         h = hashlib.sha256()
         with _ouvrir(info["url"], 30) as r, open(archive, "wb") as f:
@@ -139,20 +139,28 @@ def telecharger(info, cible, progres=lambda fraction: None):
     return nouveau
 
 
+# Noms du programme dans les archives : le nouveau (depuis la v0.9.0) et l'ancien, pour lire les deux
+NOMS_WINDOWS = ("Resident Evil HD Remaster Randomizer.exe", "ResidentEvilHDRemasterRandomizer.exe",
+                "RandomizerREHD.exe")
+NOMS_LINUX = ("Resident Evil HD Remaster Randomizer", "ResidentEvilHDRemasterRandomizer-linux",
+              "RandomizerREHD-linux")
+
+
 def _extraire(archive):
-    """Contenu du programme dans l'archive (RandomizerREHD.exe ou RandomizerREHD-linux), à la racine
-    ou dans un dossier de premier niveau. Rien n'est écrit sur le disque à partir des noms de l'archive."""
-    def bon(nom, attendu):
+    """Contenu du programme dans l'archive (voir NOMS_WINDOWS / NOMS_LINUX), à la racine ou dans un dossier
+    de premier niveau. Rien n'est écrit sur le disque à partir des noms de l'archive : la mise à jour remplace
+    le programme en gardant son nom actuel."""
+    def bon(nom, attendus):
         parties = nom.replace("\\", "/").lstrip("./").split("/")
-        return len(parties) <= 2 and parties[-1] == attendu
+        return len(parties) <= 2 and parties[-1] in attendus
     if archive.name.endswith(".zip"):
         with zipfile.ZipFile(archive) as z:
-            noms = [n for n in z.namelist() if bon(n, "RandomizerREHD.exe")]
+            noms = [n for n in z.namelist() if bon(n, NOMS_WINDOWS)]
             if len(noms) != 1:
                 raise IOError("programme introuvable dans l'archive")
             return z.read(noms[0])
     with tarfile.open(archive, "r:gz") as t:
-        membres = [m for m in t.getmembers() if m.isfile() and bon(m.name, "RandomizerREHD-linux")]
+        membres = [m for m in t.getmembers() if m.isfile() and bon(m.name, NOMS_LINUX)]
         if len(membres) != 1:
             raise IOError("programme introuvable dans l'archive")
         return t.extractfile(membres[0]).read()

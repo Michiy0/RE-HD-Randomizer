@@ -4,7 +4,8 @@ Produit icone.ico (16 à 256 px, pour l'exe) et icone.png (256 px, pour la fenê
 
     python creer_icone.py
 
-Pour utiliser ta propre image à la place : remplace icone.ico et icone.png (même nom), puis reconstruis l'exe.
+Depuis la v0.9.0, le logo est le dé mordu qui saigne, dessiné par creer_logo.py (icone.ico, icone.png, logo.png,
+logo_entete.png). Ce script ne sert plus que si ces fichiers disparaissent (il redessine alors l'ancien dé).
 """
 import struct
 import zlib

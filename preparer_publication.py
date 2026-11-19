@@ -2,8 +2,8 @@
 Prépare une version publiable du projet dans le dossier publication/ :
 
   publication/depot/                  les fichiers à mettre sur GitHub (et seulement eux)
-  publication/RandomizerREHD-v<x>-windows.zip à joindre à une « Release » GitHub ou à envoyer aux testeurs
-                                      (RandomizerREHD.exe + LISEZ-MOI.txt)
+  publication/ResidentEvilHDRemasterRandomizer-v<x>-windows.zip à joindre à une « Release » GitHub ou à envoyer aux testeurs
+                                      (Resident Evil HD Remaster Randomizer.exe + LISEZ-MOI.txt)
 
 Seuls les fichiers de la liste FICHIERS sont copiés : sauvegardes, fichiers du jeu, outils de tiers et
 seeds générées ne peuvent pas partir par erreur. Le tableur publié n'a pas l'onglet « Vocabulaire Benn ».
@@ -63,6 +63,9 @@ FICHIERS = {
     "Randomizer/construire_linux.sh": "Randomizer/construire_linux.sh",
     "Randomizer/icone.ico": "Randomizer/icone.ico",
     "Randomizer/icone.png": "Randomizer/icone.png",
+    "Randomizer/creer_logo.py": "Randomizer/creer_logo.py",
+    "Randomizer/logo.png": "Randomizer/logo.png",
+    "Randomizer/logo_entete.png": "Randomizer/logo_entete.png",
     "Randomizer/appliquer_seed.lua": "outils/cheat_engine/appliquer_seed.lua",
     "journal_objets.lua": "outils/cheat_engine/journal_objets.lua",
     "test_remplacement.lua": "outils/cheat_engine/test_remplacement.lua",
@@ -94,8 +97,8 @@ def construire_exe(depot):
                                encoding="cp850", errors="replace")
             if r.returncode != 0:
                 sys.exit(f"Échec de {script} :\n{r.stdout[-2000:]}\n{r.stderr[-2000:]}")
-        exe = SORTIE / "RandomizerREHD.exe"
-        shutil.copyfile(copie / "Randomizer" / "dist" / "RandomizerREHD.exe", exe)
+        exe = SORTIE / "Resident Evil HD Remaster Randomizer.exe"
+        shutil.copyfile(copie / "Randomizer" / "dist" / "Resident Evil HD Remaster Randomizer.exe", exe)
         return exe
 
 
@@ -118,12 +121,12 @@ def wsl_disponible():
 
 
 def construire_linux(depot):
-    """Construit RandomizerREHD-linux dans WSL (Ubuntu 22.04), à partir d'une copie du dépôt.
+    """Construit Resident Evil HD Remaster Randomizer dans WSL (Ubuntu 22.04), à partir d'une copie du dépôt.
     Renvoie le chemin du binaire, ou None si WSL n'est pas disponible."""
     if not wsl_disponible():
         print(f"WSL « {DISTRIBUTION_LINUX} » absent : pas de version Linux cette fois.")
         return None
-    with tempfile.TemporaryDirectory(prefix="randomizer_linux_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="rehdr_randomizer_linux_") as tmp:
         shutil.copytree(depot, Path(tmp) / "depot", ignore=shutil.ignore_patterns(".git"))
         script = Path(tmp) / "construire.sh"
         script.write_bytes((
@@ -132,15 +135,15 @@ def construire_linux(depot):
             "rm -rf /root/build && cp -r \"$SRC\" /root/build\n"
             "sh /root/build/DLL/compiler.sh\n"
             "sh /root/build/Randomizer/construire_linux.sh\n"
-            "cp /root/build/Randomizer/dist/RandomizerREHD-linux \"$SRC/../RandomizerREHD-linux\"\n"
+            "cp \"/root/build/Randomizer/dist/Resident Evil HD Remaster Randomizer\" \"$SRC/../programme-linux\"\n"
         ).encode("utf-8"))
         r = subprocess.run(["wsl", "-d", DISTRIBUTION_LINUX, "-u", "root", "--", "sh", chemin_wsl(script)],
                            capture_output=True)
         if r.returncode != 0:
             sortie = (r.stdout + r.stderr).decode("utf-8", errors="replace")
             sys.exit(f"Échec de la construction Linux :\n{sortie[-3000:]}")
-        binaire = SORTIE / "RandomizerREHD-linux"
-        shutil.copyfile(Path(tmp) / "RandomizerREHD-linux", binaire)
+        binaire = SORTIE / "Resident Evil HD Remaster Randomizer"
+        shutil.copyfile(Path(tmp) / "programme-linux", binaire)
         return binaire
 
 
@@ -171,19 +174,19 @@ def main():
     print(f"Dépôt prêt : {DEPOT} ({len(FICHIERS)} fichiers)")
 
     exe = construire_exe(DEPOT)
-    archive = SORTIE / f"RandomizerREHD-v{VERSION}-windows.zip"
+    archive = SORTIE / f"ResidentEvilHDRemasterRandomizer-v{VERSION}-windows.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
-        z.write(exe, "RandomizerREHD.exe")
+        z.write(exe, "Resident Evil HD Remaster Randomizer.exe")
         z.write(ICI / "LISEZ-MOI_testeur.txt", "LISEZ-MOI.txt")
     exe.unlink()
     print(f"Archive prête : {archive} ({archive.stat().st_size // 1024} Ko)")
 
     binaire = construire_linux(DEPOT)
     if binaire:
-        archive_linux = SORTIE / f"RandomizerREHD-v{VERSION}-linux.tar.gz"
+        archive_linux = SORTIE / f"ResidentEvilHDRemasterRandomizer-v{VERSION}-linux.tar.gz"
         with tarfile.open(archive_linux, "w:gz") as tar:          # tar.gz : garde le droit d'exécution
-            ajouter_tar(tar, "RandomizerREHD/RandomizerREHD-linux", binaire.read_bytes(), 0o755)
-            ajouter_tar(tar, "RandomizerREHD/LISEZ-MOI.txt", (ICI / "LISEZ-MOI_linux.txt").read_bytes(), 0o644)
+            ajouter_tar(tar, "ResidentEvilHDRemasterRandomizer/Resident Evil HD Remaster Randomizer", binaire.read_bytes(), 0o755)
+            ajouter_tar(tar, "ResidentEvilHDRemasterRandomizer/LISEZ-MOI.txt", (ICI / "LISEZ-MOI_linux.txt").read_bytes(), 0o644)
         binaire.unlink()
         print(f"Archive Linux prête : {archive_linux} ({archive_linux.stat().st_size // 1024} Ko)")
 

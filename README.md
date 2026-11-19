@@ -1,7 +1,7 @@
-# Randomizer — Resident Evil HD Remaster (PC / Steam)
+# Resident Evil HD Remaster Randomizer (PC / Steam)
 
-**[⬇ Download the latest version](https://github.com/Michiy0/RE-HD-Randomizer/releases)** ·
-[Français](#français) · [Report a problem](https://github.com/Michiy0/RE-HD-Randomizer/issues)
+**[⬇ Download the latest version](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/releases)** ·
+[Français](#français) · [Report a problem](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/issues)
 
 The randomizer **moves the game's items around**: ammo, herbs, ink ribbons… are no longer where you
 expect them, and every new game plays differently. The new item shows up directly on the floor and in the
@@ -20,7 +20,7 @@ or strategies.
   so the game is always completable.
 - **A simple app**: install the randomizer, choose your options, generate a seed, and you're ready. One
   click brings back the original game.
-- **No Cheat Engine**: a small DLL loads with the game and does the work. The game's code is never
+- **Nothing else to install**: a small DLL loads with the game and does the work. The game's code is never
   modified.
 - **Windows and Steam Deck**: a Windows app, and a native Linux app for the Steam Deck.
 - **7 languages**: English, French, Japanese, Spanish, Portuguese, Russian and Chinese (system language
@@ -39,7 +39,7 @@ or strategies.
 </tr>
 </table>
 
-## Status: version 0.8.10 (test)
+## Status: version 0.9.0 (test)
 
 | Supported | Coming |
 |---|---|
@@ -77,7 +77,7 @@ Percentage of rooms surveyed in a **new game**, for each character and difficult
 | Jill | Hard | 0/118 (0%) | 0 | 0 |
 | Jill | Real Survival | 0/118 (0%) | 0 | 0 |
 
-Bonus weapons: 0/2 identified. Updated 2026-11-19.
+Bonus weapons: 2/2 identified. Updated 2026-11-19.
 
 </details>
 
@@ -87,9 +87,9 @@ Bonus weapons: 0/2 identified. Updated 2026-11-19.
 
 ### Windows
 
-1. Download `RandomizerREHD-v…-windows.zip` from the
-   **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)** and extract it anywhere.
-2. Run `RandomizerREHD.exe`. The game folder is found automatically (otherwise: **Browse…**).
+1. Download `ResidentEvilHDRemasterRandomizer-v…-windows.zip` from the
+   **[Releases](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/releases)** and extract it anywhere.
+2. Run `Resident Evil HD Remaster Randomizer.exe`. The game folder is found automatically (otherwise: **Browse…**).
 3. **Installation** tab: click **Install the DLL** (once). The **Generate a seed** tab unlocks.
 4. Choose your options, then **Generate seed** (keep “Install the seed in the game” ticked).
 5. Start the game from Steam: **new game, Chris, Normal**.
@@ -99,7 +99,7 @@ To change seeds: generate a new one, then restart the game.
 **Updates**: since **v0.7**, the app checks for a new version at startup; an **Update** button then
 appears at the top, next to the language selector. One click downloads it, checks it, replaces the app
 and restarts it. If the game's DLL also needs updating, the app opens on the **Installation** tab.
-If you have an older version (0.6.2 or earlier), download v0.7 or a later version manually once. On Steam Deck / Linux, versions 0.7 to 0.8.2 cannot find updates: download v0.8.3 or a later version manually once.
+If you have v0.8.10 or earlier, download the latest version manually once: the program was renamed in v0.9.0 (`Resident Evil HD Remaster Randomizer`) and older versions cannot update to it on their own.
 
 > **SmartScreen / antivirus**: the exe is not signed (hobby project). Windows may show “Windows protected
 > your PC” → *More info* → *Run anyway*. Some antivirus tools may also flag the DLL by mistake: it uses a
@@ -110,8 +110,8 @@ If you have an older version (0.6.2 or earlier), download v0.7 or a later versio
 
 The app has a **native Linux** version (no Proton needed for it); the game itself still runs with Proton.
 
-1. In **Desktop Mode**, download `RandomizerREHD-v…-linux.tar.gz` and extract it.
-2. Double-click `RandomizerREHD-linux` (if needed: right-click → *Properties* → *Permissions* → “Is
+1. In **Desktop Mode**, download `ResidentEvilHDRemasterRandomizer-v…-linux.tar.gz` and extract it.
+2. Double-click `Resident Evil HD Remaster Randomizer` (if needed: right-click → *Properties* → *Permissions* → “Is
    executable”). The game is found in your Steam library, SD card included.
 3. **Installation** tab: click **Install the DLL**, then **Copy** the launch option, and paste it once
    in Steam (*game Properties → Launch Options*):
@@ -182,7 +182,7 @@ The randomizer only shuffles items that have already been **surveyed**. Anyone c
 3. Visit rooms without picking anything up; stay about 2 seconds in each. The DLL records the items in
    the game log (small stutter of about 0.3 s when entering a room).
 4. Open the log (**Game log** button) and attach it to an
-   [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues), stating your character and difficulty.
+   [issue](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/issues), stating your character and difficulty.
 
 **Tip: [BhdTool](https://github.com/eleval/BhdTool) saves a lot of time.** This tool by eleval, made for speedrun practice, is
 installed by copying its `dinput8.dll` (and `rooms.json`) into the game folder; it works alongside the
@@ -198,7 +198,7 @@ report it too (texts are in `Randomizer/textes.py`).
 
 ## Reporting a problem
 
-Open an [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues) and attach `randomizer_journal.txt`
+Open an [issue](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/issues) and attach `randomizer_journal.txt`
 (**Game log** button), with the seed, options, platform (Windows or Steam Deck) and what happened.
 
 ## For developers
@@ -273,8 +273,8 @@ GPLv3 — see [LICENSE](LICENSE).
 
 # Français
 
-**[⬇ Télécharger la dernière version](https://github.com/Michiy0/RE-HD-Randomizer/releases)** ·
-[English](#randomizer--resident-evil-hd-remaster-pc--steam) · [Signaler un problème](https://github.com/Michiy0/RE-HD-Randomizer/issues)
+**[⬇ Télécharger la dernière version](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/releases)** ·
+[English](#resident-evil-hd-remaster-randomizer-pc--steam) · [Signaler un problème](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/issues)
 
 Le randomizer **change la place des objets** du jeu : munitions, herbes, rubans encreurs… ne sont plus là
 où tu les attends, et chaque nouvelle partie se joue différemment.
@@ -294,7 +294,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
   ramassage (option « Objets visibles par terre »).
 - **Une application simple** : on installe le randomizer, on choisit ses options, on génère une seed, et
   c'est prêt. Un clic suffit pour revenir au jeu d'origine.
-- **Sans Cheat Engine** : une petite DLL se charge avec le jeu et fait le travail. Le code du jeu n'est
+- **Rien d'autre à installer** : une petite DLL se charge avec le jeu et fait le travail. Le code du jeu n'est
   jamais modifié.
 - **Windows et Steam Deck** : application Windows, et application Linux native pour le Steam Deck.
 - **7 langues** : français, anglais, japonais, espagnol, portugais, russe et chinois (langue du système
@@ -314,7 +314,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.10 (test)
+## État : version 0.9.0 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -352,7 +352,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 | Jill | Difficile | 0/118 (0 %) | 0 | 0 |
 | Jill | Real Survival | 0/118 (0 %) | 0 | 0 |
 
-Armes bonus : 0/2 identifiées. Mis à jour le 19/11/2026.
+Armes bonus : 2/2 identifiées. Mis à jour le 19/11/2026.
 
 </details>
 
@@ -362,9 +362,9 @@ Armes bonus : 0/2 identifiées. Mis à jour le 19/11/2026.
 
 ### Windows
 
-1. Télécharge `RandomizerREHD-v…-windows.zip` dans les **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)**
+1. Télécharge `ResidentEvilHDRemasterRandomizer-v…-windows.zip` dans les **[Releases](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/releases)**
    et extrais-le où tu veux.
-2. Lance `RandomizerREHD.exe`. Le dossier du jeu est trouvé automatiquement (sinon : **Parcourir…**).
+2. Lance `Resident Evil HD Remaster Randomizer.exe`. Le dossier du jeu est trouvé automatiquement (sinon : **Parcourir…**).
 3. Onglet **Installation** : clique **Installer la DLL** (une seule fois). L'onglet **Générer une seed**
    se débloque.
 4. Choisis tes options, puis **Générer la seed** (laisse cochée « Installer la seed dans le jeu »).
@@ -379,7 +379,7 @@ Depuis la **v0.7**, l'application vérifie au démarrage s'il existe une nouvell
 remplace l'application et la relance. Si la DLL du jeu doit aussi être mise à jour, l'application
 s'ouvre sur l'onglet **Installation**.
 
-Si tu as une version plus ancienne (0.6.2 ou avant), télécharge à la main une seule fois la v0.7 ou une version supérieure. Sur Steam Deck / Linux, les versions 0.7 à 0.8.2 ne trouvent pas les mises à jour : télécharge à la main une seule fois la v0.8.3 ou une version supérieure.
+Si tu as la v0.8.10 ou une version plus ancienne, télécharge à la main une seule fois la dernière version : le programme a changé de nom en v0.9.0 (`Resident Evil HD Remaster Randomizer`) et les anciennes versions ne peuvent pas s'y mettre à jour toutes seules.
 
 > **SmartScreen / antivirus** : l'exe n'est pas signé (projet amateur). Windows peut afficher « Windows a
 > protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*. Certains antivirus
@@ -391,8 +391,8 @@ Si tu as une version plus ancienne (0.6.2 ou avant), télécharge à la main une
 L'application existe en version **Linux native** (pas besoin de Proton pour elle) ; le jeu, lui, tourne
 toujours avec Proton.
 
-1. En **mode Bureau**, télécharge `RandomizerREHD-v…-linux.tar.gz` et extrais-le.
-2. Double-clique sur `RandomizerREHD-linux` (si besoin : clic droit → *Propriétés* → *Permissions* →
+1. En **mode Bureau**, télécharge `ResidentEvilHDRemasterRandomizer-v…-linux.tar.gz` et extrais-le.
+2. Double-clique sur `Resident Evil HD Remaster Randomizer` (si besoin : clic droit → *Propriétés* → *Permissions* →
    « Est exécutable »). Le jeu est trouvé dans la bibliothèque Steam, carte SD comprise.
 3. Onglet **Installation** : clique **Installer la DLL**, puis **Copier** l'option de lancement, et
    colle-la une fois dans Steam (*Propriétés du jeu → Options de lancement*) :
@@ -467,7 +467,7 @@ Le randomizer ne mélange que les objets déjà **relevés**. Tout le monde peut
 3. Visite les pièces sans rien ramasser ; reste environ 2 secondes dans chacune. La DLL note les objets
    présents dans le journal du jeu (petite saccade d'environ 0,3 s à l'entrée d'une pièce).
 4. Ouvre le journal (bouton **Journal du jeu**) et joins-le à une
-   [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues), en précisant le personnage et la difficulté.
+   [issue](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/issues), en précisant le personnage et la difficulté.
 
 **Astuce : [BhdTool](https://github.com/eleval/BhdTool) fait gagner beaucoup de temps.** Cet outil d'eleval, fait pour l'entraînement
 au speedrun, s'installe en copiant son `dinput8.dll` (et `rooms.json`) dans le dossier du jeu ; il est
@@ -483,7 +483,7 @@ signale-la aussi (les textes sont dans `Randomizer/textes.py`).
 
 ## Signaler un problème
 
-Ouvre une [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues) en joignant `randomizer_journal.txt`
+Ouvre une [issue](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/issues) en joignant `randomizer_journal.txt`
 (bouton **Journal du jeu**), avec la graine, les options, ta plateforme (Windows ou Steam Deck) et ce qui
 s'est passé.
 

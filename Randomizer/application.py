@@ -8,12 +8,14 @@ Lancer sans compiler :  python application.py
 Construire le .exe   :  construire_exe.bat
 """
 import os
+import re
 import shutil
 import subprocess
 import sys
 import threading
 import webbrowser
 import tkinter as tk
+import unicodedata
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from tkinter import font as tkfont
@@ -23,15 +25,16 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.8.10"
+VERSION = "0.9.0"
 TAILLE_BHD_EXE = 9640360
-URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
+URL_DEPOT = "https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
 AUTEURS = [("Jojo / Michiyo", "Delage Jordan", "https://github.com/Michiy0")]
 # (pseudo, nom complet, petit mot à côté du pseudo — non traduit)
 TESTEURS = [("Nico", "De Oliveira Gomes Nicolas", "Number One Chris Fan")]
 SHA256_BHD_EXE = "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"
-TITRE = f"Randomizer RE HD Remaster v{VERSION}"
+NOM_APPLI = "Resident Evil HD Remaster Randomizer"
+TITRE = f"{NOM_APPLI} v{VERSION}"
 SOUS_WINDOWS = sys.platform == "win32"
 # Le jeu tourne sous Proton sur Linux / Steam Deck : la DLL doit être préférée à celle de Proton.
 OPTION_PROTON = 'WINEDLLOVERRIDES="xinput1_4=n,b" %command%'
@@ -133,9 +136,11 @@ def ecrire_option_ini(dossier, cle, valeur):
 
 
 def est_notre_dll(chemin):
-    """Vrai si ce xinput1_4.dll est celui du randomizer (il contient le texte de son journal)."""
+    """Vrai si ce xinput1_4.dll est celui du randomizer (il contient le texte de son journal : nouveau nom depuis
+    la v0.9.0, ancien nom avant)."""
     try:
-        return b"Randomizer RE HD" in Path(chemin).read_bytes()
+        contenu = Path(chemin).read_bytes()
+        return b"Resident Evil HD Remaster Randomizer" in contenu or b"Randomizer RE HD" in contenu
     except OSError:
         return False
 
@@ -253,6 +258,129 @@ def creer_indicateurs(racine, style):
         style.configure(nom_ttk, padding=(0, 4))
 
 
+def dessiner_onglet(remplissage, barre=None, largeur=64, hauteur=48, rayon=7, ecart=3, epaisseur=3):
+    """Onglet « carte » : coins du haut arrondis, bas droit, une bande transparente à droite (espace entre
+    onglets) et, pour l'onglet actif, une barre de couleur en haut."""
+    rf = _hex(remplissage)
+    rb = _hex(barre) if barre else rf
+    corps = largeur - ecart
+    pixels = []
+    for y in range(hauteur):
+        for x in range(largeur):
+            if x >= corps:
+                pixels.append((0, 0, 0, 0))
+                continue
+            px, py = x + 0.5, y + 0.5
+            # distance au rectangle à coins du haut arrondis
+            cx = min(max(px, rayon), corps - rayon)
+            d = ((px - cx) ** 2 + (py - rayon) ** 2) ** 0.5 - rayon if py < rayon else -1
+            couverture = max(0.0, min(1.0, 0.5 - d))
+            couleur = rb if py < epaisseur else rf
+            pixels.append(couleur + (round(255 * couverture),))
+    return _png(largeur, hauteur, pixels)
+
+
+def dessiner_icone(nom, couleur, taille=16):
+    """Petite icône au trait (style « outline ») dessinée en distances signées, sans bibliothèque :
+    telechargement, de, oeil, coeur, info."""
+    def seg(x, y, a, b):
+        (ax, ay), (bx, by) = a, b
+        dx, dy = bx - ax, by - ay
+        t = max(0, min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)))
+        return ((x - ax - t * dx) ** 2 + (y - ay - t * dy) ** 2) ** 0.5
+
+    def cercle(x, y, cx, cy, r):
+        return ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5 - r
+
+    def rrect(x, y, x0, y0, x1, y1, r):
+        cx, cy, hx, hy = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 - r, (y1 - y0) / 2 - r
+        qx, qy = abs(x - cx) - hx, abs(y - cy) - hy
+        return (max(qx, 0) ** 2 + max(qy, 0) ** 2) ** 0.5 + min(max(qx, qy), 0) - r
+
+    def triangle(x, y, a, b, c_):
+        d = min(seg(x, y, a, b), seg(x, y, b, c_), seg(x, y, c_, a))
+        def cote(p, q):
+            return (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0])
+        s1, s2, s3 = cote(a, b), cote(b, c_), cote(c_, a)
+        dedans = (s1 >= 0 and s2 >= 0 and s3 >= 0) or (s1 <= 0 and s2 <= 0 and s3 <= 0)
+        return -d if dedans else d
+
+    trait = 0.75                                     # demi-épaisseur du trait (1,5 px)
+
+    def distance(x, y):
+        if nom == "telechargement":
+            return min(seg(x, y, (8, 2.5), (8, 10.5)), seg(x, y, (4.5, 7.5), (8, 11)), seg(x, y, (11.5, 7.5), (8, 11)),
+                       seg(x, y, (2.5, 13.5), (13.5, 13.5))) - trait
+        if nom == "de":
+            return min(abs(rrect(x, y, 2, 2, 14, 14, 3)) - trait, cercle(x, y, 5.5, 5.5, 1.25),
+                       cercle(x, y, 8, 8, 1.25), cercle(x, y, 10.5, 10.5, 1.25))
+        if nom == "oeil":
+            # amande : intersection de deux grands cercles, plus la pupille
+            amande = max(cercle(x, y, 8, 13.5, 9), cercle(x, y, 8, 2.5, 9))
+            return min(abs(amande) - trait, cercle(x, y, 8, 8, 2.1))
+        if nom == "coeur":
+            coeur = min(cercle(x, y, 5.4, 6.2, 3.1), cercle(x, y, 10.6, 6.2, 3.1),
+                        triangle(x, y, (2.45, 7.2), (13.55, 7.2), (8, 13.6)))
+            return abs(coeur) - trait
+        if nom == "info":
+            return min(abs(cercle(x, y, 8, 8, 6.3)) - trait, cercle(x, y, 8, 5.2, 1.0),
+                       seg(x, y, (8, 7.6), (8, 11.3)) - trait)
+        return 99
+
+    r, g, b = _hex(couleur)
+    pixels = []
+    for y in range(taille):
+        for x in range(taille):
+            # 4 échantillons par pixel pour un bord lisse
+            cov = sum(max(0.0, min(1.0, 0.5 - distance(x + dx, y + dy) * 1.0))
+                      for dx in (0.25, 0.75) for dy in (0.25, 0.75)) / 4
+            pixels.append((r, g, b, round(255 * cov)))
+    return _png(taille, taille, pixels)
+
+
+def creer_icones_onglets(racine):
+    """Icônes des onglets, une image par état : gris (normal), blanc (actif / survol), gris foncé (grisé).
+    Renvoie {nom: spécification d'image ttk}."""
+    c = COULEURS
+    if getattr(racine, "_icones_onglets", None):
+        return racine._icones_onglets
+    garde, specs = [], {}
+    for nom in ("telechargement", "de", "oeil", "coeur", "info"):
+        normal, blanc, grise = (tk.PhotoImage(master=racine, data=dessiner_icone(nom, coul))
+                                for coul in (c["discret"], "#ffffff", c["grise"]))
+        garde += [normal, blanc, grise]
+        specs[nom] = (normal, "disabled", grise, "selected", blanc, "active", blanc)
+    racine._icones_garde = garde
+    racine._icones_onglets = specs
+    return specs
+
+
+def creer_onglets(racine, style):
+    """Onglets façon intercalaires (style « G ») : l'actif est rouge, posé sur un trait rouge."""
+    c = COULEURS
+    if getattr(racine, "_images_onglets", None):       # déjà créés : le thème est simplement réappliqué
+        return
+    racine._images_onglets = im = {
+        "normal": tk.PhotoImage(master=racine, data=dessiner_onglet(c["carte"])),
+        "survol": tk.PhotoImage(master=racine, data=dessiner_onglet(c["survol"])),
+        "actif": tk.PhotoImage(master=racine, data=dessiner_onglet(c["accent"])),
+        "actif_survol": tk.PhotoImage(master=racine, data=dessiner_onglet(c["accent_survol"])),
+        "grise": tk.PhotoImage(master=racine, data=dessiner_onglet("#191b20")),
+    }
+    # bas de la rangée d'onglets : un trait rouge, sur lequel l'onglet actif se pose
+    # (image assez grande : Tk recopie le centre en mosaïque sur toute la page, une petite image = des milliers
+    # de copies à chaque affichage et des onglets qui rament)
+    cote = 256
+    haut, bas = _hex(c["accent"]) + (255,), _hex(c["fond"]) + (255,)
+    ligne = [haut if y < 3 else bas for y in range(cote) for _ in range(cote)]
+    im["ligne"] = tk.PhotoImage(master=racine, data=_png(cote, cote, ligne))
+    style.element_create("Intercalaire.tab", "image", im["normal"],
+                         ("disabled", im["grise"]), ("selected", "active", im["actif_survol"]),
+                         ("selected", im["actif"]), ("active", im["survol"]),
+                         border=(10, 8, 13, 2), sticky="nsew")
+    style.element_create("Intercalaire.client", "image", im["ligne"], border=(0, 3, 0, 0), sticky="nsew")
+
+
 def appliquer_style(racine):
     c = COULEURS
     racine.configure(bg=c["fond"])
@@ -319,19 +447,18 @@ def appliquer_style(racine):
                 gripcount=0, width=8 if SOUS_WINDOWS else 14)
     s.map("Mince.Vertical.TScrollbar", background=[("active", "#4a505c")],
           lightcolor=[("active", "#4a505c")], darkcolor=[("active", "#4a505c")])
-    # onglets : plats, sans pointillés de focus, l'onglet actif prend la couleur des cartes
-    s.configure("TNotebook", background=c["fond"], borderwidth=0, bordercolor=c["fond"],
-                lightcolor=c["fond"], darkcolor=c["fond"], tabmargins=(0, 0, 0, 0))
-    s.layout("TNotebook.Tab", [("Notebook.tab", {"sticky": "nswe", "children": [
+    # onglets façon intercalaires : coins du haut arrondis, l'actif rouge posé sur un trait rouge, icônes
+    creer_onglets(racine, s)
+    s.configure("TNotebook", background=c["fond"], borderwidth=0, tabmargins=(0, 0, 0, 0))
+    s.layout("TNotebook", [("Intercalaire.client", {"sticky": "nswe"})])
+    s.layout("TNotebook.Tab", [("Intercalaire.tab", {"sticky": "nswe", "children": [
         ("Notebook.padding", {"side": "top", "sticky": "nswe", "children": [
             ("Notebook.label", {"side": "top", "sticky": ""})]})]})])
-    s.configure("TNotebook.Tab", background=c["fond"], foreground=c["discret"], padding=(18, 9),
-                font=(POLICE, 10, "bold"), borderwidth=0, bordercolor=c["fond"], lightcolor=c["fond"],
-                darkcolor=c["fond"])
-    s.map("TNotebook.Tab", background=[("disabled", c["fond"]), ("selected", c["carte"]), ("active", c["survol"])],
-          foreground=[("disabled", c["grise"]), ("selected", c["texte"]), ("active", c["texte"])],
-          bordercolor=[("selected", c["bord"])], lightcolor=[("selected", c["carte"])],
-          darkcolor=[("selected", c["carte"])])
+    s.configure("TNotebook.Tab", compound="left")
+    s.configure("TNotebook.Tab", background=c["fond"], foreground=c["discret"], padding=(10, 8, 7, 6),
+                font=(POLICE, 10, "bold"))
+    s.map("TNotebook.Tab", foreground=[("disabled", c["grise"]), ("selected", "#ffffff"), ("active", c["texte"])],
+          expand=[("selected", (0, 0, 0, 0))], padding=[("selected", (10, 8, 7, 6))])
     # liste déroulante (sélecteur de langue)
     s.configure("TCombobox", fieldbackground=c["champ"], background=c["champ"], foreground=c["texte"],
                 arrowcolor=c["texte"], bordercolor=c["bord"], lightcolor=c["champ"], darkcolor=c["champ"],
@@ -382,11 +509,21 @@ def ouvrir(chemin):
 
 
 def fichier_preferences():
+    """Préférences de l'appli. Dossier renommé en v0.9.0 : l'ancien fichier (RandomizerREHD) est recopié
+    une fois dans le nouveau dossier, pour garder la langue choisie."""
     if os.environ.get("APPDATA"):
         base = Path(os.environ["APPDATA"])
     else:                                       # Linux : ~/.config
         base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
-    return base / "RandomizerREHD" / "preferences.ini"
+    fichier = base / "ResidentEvilHDRemasterRandomizer" / "preferences.ini"
+    ancien = base / "RandomizerREHD" / "preferences.ini"
+    if not fichier.exists() and ancien.exists():
+        try:
+            fichier.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ancien, fichier)
+        except OSError:
+            return ancien
+    return fichier
 
 
 def lire_langue():
@@ -414,6 +551,31 @@ def enregistrer_langue(code):
         f.write_text(f"langue={code}\n", encoding="utf-8")
     except OSError:
         pass                        # préférence perdue, sans gravité
+
+
+class Infobulle:
+    """Petite bulle d'aide qui apparaît au survol d'un widget."""
+
+    def __init__(self, widget, texte):
+        self.widget, self.texte, self.bulle = widget, texte, None
+        widget.bind("<Enter>", self.montrer, add="+")
+        widget.bind("<Leave>", self.cacher, add="+")
+
+    def montrer(self, _=None):
+        if self.bulle or not self.texte:
+            return
+        x = self.widget.winfo_rootx()
+        y = self.widget.winfo_rooty() - 34
+        self.bulle = tk.Toplevel(self.widget)
+        self.bulle.wm_overrideredirect(True)
+        self.bulle.wm_geometry(f"+{x}+{y}")
+        tk.Label(self.bulle, text=self.texte, bg=COULEURS["carte"], fg=COULEURS["texte"], padx=8, pady=4,
+                 relief="solid", borderwidth=1, font=(POLICE, 9)).pack()
+
+    def cacher(self, _=None):
+        if self.bulle:
+            self.bulle.destroy()
+            self.bulle = None
 
 
 class Defilable(ttk.Frame):
@@ -495,12 +657,15 @@ class Application(tk.Tk):
         self.cles = tk.BooleanVar(value=False)
         self.sans_logique = tk.BooleanVar(value=False)         # option à venir (grisée) : clés sans logique
         self.ennemis = tk.BooleanVar(value=False)              # option à venir (grisée)
-        self.armes_bonus = tk.BooleanVar(value=False)          # option à venir (grisée)
+        self.armes_bonus = tk.BooleanVar(value=False)          # option « Fun » : Samurai Edge + lance-roquettes
+        self.bonus_coches = {ident: tk.BooleanVar(value=True) for _, ident, _ in gen.ARMES_BONUS}
         self.graine = tk.StringVar(value=str(gen.tirer_graine()))
         jeu = gen.trouver_dossier_jeu()
         self.dossier_jeu = tk.StringVar(value=str(jeu) if jeu else "")
         self.installer = tk.BooleanVar(value=True)
         self.afficher_spoiler = tk.BooleanVar(value=False)
+        self.recherche_spoiler = tk.StringVar()              # filtre du spoiler (vide = tout afficher)
+        self.recherche_spoiler.trace_add("write", lambda *_: self.afficher_resultat())
         self.releve = tk.BooleanVar(value=False)
         self.proton_dinput8 = tk.BooleanVar(value=False)      # option de lancement : charger aussi dinput8.dll
         self.option_proton = tk.StringVar(value=OPTION_PROTON)
@@ -558,9 +723,20 @@ class Application(tk.Tk):
 
         entete = ttk.Frame(racine)
         entete.pack(fill="x", pady=(0, 12))
-        ttk.Label(entete, text="Randomizer", style="Titre.TLabel").pack(side="left")
+        # logo (le zombie qui croque un dé) : logo_entete.png, déjà réduit à 40 px pour rester net
+        if not getattr(self, "_logo_entete", None):
+            self._logo_entete = None
+            logo = trouver_ressource("logo_entete.png", ("",))
+            try:
+                if logo:
+                    self._logo_entete = tk.PhotoImage(master=self, file=str(logo))
+            except tk.TclError:
+                pass
+        if self._logo_entete:
+            ttk.Label(entete, image=self._logo_entete).pack(side="left", padx=(0, 10), pady=(3, 0))
+        ttk.Label(entete, text=NOM_APPLI, style="Titre.TLabel").pack(side="left")
         # le sous-titre est placé en dernier : si la fenêtre est étroite, c'est lui qui est raccourci
-        self.sous_titre = ttk.Label(entete, text=f"Resident Evil HD Remaster  ·  v{VERSION}",
+        self.sous_titre = ttk.Label(entete, text=f"v{VERSION}",
                                     style="SousTitre.TLabel")
         # sélecteur de langue, en haut à droite
         auto = f"{self.t('langue_auto')} ({textes.LANGUES[textes.langue_systeme()]})"
@@ -590,12 +766,14 @@ class Application(tk.Tk):
         self.page_generer = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
         self.page_spoiler = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
         page_aide = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
-        self.onglets.add(self.page_install, text=self.t("onglet_installation"))
-        self.onglets.add(self.page_generer, text=self.t("onglet_generer"))
-        self.onglets.add(self.page_spoiler, text=self.t("onglet_spoiler"))
-        self.onglets.add(page_aide, text=self.t("onglet_aide"))
+        icones = creer_icones_onglets(self)
         page_info = ttk.Frame(self.onglets, padding=(0, 14, 0, 0))
-        self.onglets.add(page_info, text=self.t("onglet_info"))
+        for page, cle, icone in ((self.page_install, "onglet_installation", "telechargement"),
+                                 (self.page_generer, "onglet_generer", "de"),
+                                 (self.page_spoiler, "onglet_spoiler", "oeil"),
+                                 (page_aide, "onglet_aide", "coeur"),
+                                 (page_info, "onglet_info", "info")):
+            self.onglets.add(page, text=" " + self.t(cle), image=icones[icone], compound="left")
         self.construire_installation(self.page_install)
         self.construire_generation(self.page_generer)
         self.construire_spoiler(self.page_spoiler)
@@ -660,9 +838,6 @@ class Application(tk.Tk):
         self.bouton_retirer_dll = ttk.Button(gestion, text=self.t("desinstaller_dll"), style="Danger.TButton",
                                              command=self.retirer_dll)
         self.bouton_retirer_dll.pack(side="left", padx=8)
-        self.bouton_retirer_seed = ttk.Button(gestion, text=self.t("supprimer_seed"),
-                                              style="Danger.TButton", command=self.retirer_seed)
-        self.bouton_retirer_seed.pack(side="left")
         ttk.Label(j, text=self.t("note_desinstaller"),
                   style="Note.TLabel").grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
         if not SOUS_WINDOWS or os.environ.get("RANDOMIZER_LINUX"):
@@ -698,9 +873,15 @@ class Application(tk.Tk):
         cadre.columnconfigure(0, weight=1, uniform="col")
         cadre.columnconfigure(1, weight=1, uniform="col")
 
+        # deux colonnes indépendantes : Partie + Fun à gauche ; Options + Pour les fous + Ennemis à droite
+        gauche = ttk.Frame(cadre)
+        gauche.grid(row=0, column=0, sticky="new", padx=(0, 8))
+        droite = ttk.Frame(cadre)
+        droite.grid(row=0, column=1, sticky="new", padx=(8, 0))
+
         # --- Partie
-        partie, p = self.carte(cadre, self.t("carte_partie"))
-        partie.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        partie, p = self.carte(gauche, self.t("carte_partie"))
+        partie.pack(fill="x")
         p.columnconfigure(1, weight=1)
         a_venir = f"  · {self.t('a_venir')}"
         ttk.Label(p, text=self.t("personnage"), style="Carte.TLabel").grid(row=0, column=0, sticky="w")
@@ -716,11 +897,32 @@ class Application(tk.Tk):
                             variable=self.difficulte, state="normal" if dispo else "disabled"
                             ).grid(row=1 + i, column=1, sticky="w", padx=(24, 0))
 
+        # --- Fun : options qui rendent la partie plus facile (sous « Partie »)
+        fun, f = self.carte(gauche, self.t("carte_fun"))
+        fun.pack(fill="x", pady=(16, 0))
+        ttk.Label(f, text=self.t("note_fun"), style="Note.TLabel", wraplength=300,
+                  justify="left").pack(anchor="w", pady=(0, 6))
+        ttk.Checkbutton(f, text=self.t("armes_bonus"), variable=self.armes_bonus,
+                        command=self.afficher_liste_bonus).pack(anchor="w")
+        self.note_bonus = ttk.Label(f, text=self.t("note_armes_bonus_fun"), style="Note.TLabel", wraplength=300,
+                                    justify="left")
+        self.note_bonus.pack(anchor="w", padx=(27, 0))
+        # une case par arme bonus, visible seulement quand « Armes bonus » est cochée
+        self.liste_bonus = ttk.Frame(f, style="Carte.TFrame", borderwidth=0)
+        for cle, ident, _ in gen.ARMES_BONUS:
+            ttk.Checkbutton(self.liste_bonus, text=self.t(cle), variable=self.bonus_coches[ident]).pack(anchor="w")
+        self.afficher_liste_bonus()
+        ttk.Label(f, text=self.t("note_armes_bonus"), style="Note.TLabel", wraplength=300,
+                  justify="left").pack(anchor="w", padx=(27, 0), pady=(4, 0))
+
         # --- Options
-        options, o = self.carte(cadre, self.t("carte_options"))
-        options.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        options, o = self.carte(droite, self.t("carte_options"))
+        options.pack(fill="x")
+        ttk.Checkbutton(o, text=self.t("objets_visibles"), variable=self.visibles).pack(anchor="w")
+        ttk.Label(o, text=self.t("note_objets_visibles"), style="Note.TLabel", wraplength=280,
+                  justify="left").pack(anchor="w", padx=(27, 0))
         ttk.Checkbutton(o, text=self.t("armes_aleatoires"), variable=self.armes,
-                        command=self.afficher_liste_armes).pack(anchor="w")
+                        command=self.afficher_liste_armes).pack(anchor="w", pady=(6, 0))
         self.note_armes = ttk.Label(o, text=self.t("note_armes"), style="Note.TLabel", wraplength=280,
                                     justify="left")
         self.note_armes.pack(anchor="w", padx=(27, 0))
@@ -735,35 +937,30 @@ class Application(tk.Tk):
             case = ttk.Checkbutton(self.liste_armes, text=texte, variable=self.armes_cochees[cle])
             case.pack(anchor="w")
             self.cases_armes[cle] = (case, id_arme, perso)
-        ttk.Checkbutton(self.liste_armes, text=self.t("arme_depart"), variable=self.arme_depart).pack(
-            anchor="w", pady=(8, 0))
-        ttk.Label(self.liste_armes, text=self.t("note_arme_depart"), style="Note.TLabel", wraplength=250,
+        # « Arme garantie au départ » : juste sous les armes aléatoires (grisée sans elles)
+        self.case_arme_depart = ttk.Checkbutton(o, text=self.t("arme_depart"), variable=self.arme_depart)
+        self.case_arme_depart.pack(anchor="w", pady=(6, 0))
+        ttk.Label(o, text=self.t("note_arme_depart"), style="Note.TLabel", wraplength=280,
                   justify="left").pack(anchor="w", padx=(27, 0))
         self.afficher_liste_armes()
-        ttk.Checkbutton(o, text=self.t("objets_visibles"), variable=self.visibles).pack(anchor="w", pady=(6, 0))
-        ttk.Label(o, text=self.t("note_objets_visibles"), style="Note.TLabel", wraplength=280,
-                  justify="left").pack(anchor="w", padx=(27, 0))
         ttk.Checkbutton(o, text=self.t("cles_aleatoires") + a_venir, variable=self.cles,
                         state="disabled").pack(anchor="w", pady=(6, 0))
-        # sous-option des clés : décalée comme la liste des armes
-        ttk.Checkbutton(o, text=self.t("sans_logique") + a_venir, variable=self.sans_logique,
-                        state="disabled").pack(anchor="w", padx=(27, 0))
-        ttk.Label(o, text=self.t("note_sans_logique"), style="Note.TLabel", wraplength=260,
-                  justify="left").pack(anchor="w", padx=(54, 0))
-        ttk.Checkbutton(o, text=self.t("ennemis_aleatoires") + a_venir, variable=self.ennemis,
+
+        # --- Pour les fous : options qui peuvent rendre la partie impossible à finir
+        fous, fo = self.carte(droite, self.t("carte_fous"))
+        fous.pack(fill="x", pady=(16, 0))
+        ttk.Checkbutton(fo, text=self.t("sans_logique") + a_venir, variable=self.sans_logique,
                         state="disabled").pack(anchor="w")
-        ttk.Checkbutton(o, text=self.t("armes_bonus") + a_venir, variable=self.armes_bonus,
-                        state="disabled").pack(anchor="w")
-        ttk.Label(o, text=self.t("note_armes_bonus"), style="Note.TLabel", wraplength=280,
+        ttk.Label(fo, text=self.t("note_sans_logique"), style="Note.TLabel", wraplength=280,
                   justify="left").pack(anchor="w", padx=(27, 0))
-        ttk.Label(o, text=self.t("graine"), style="Carte.TLabel").pack(anchor="w", pady=(14, 4))
-        ligne = ttk.Frame(o, style="Carte.TFrame", borderwidth=0)
-        ligne.pack(anchor="w", fill="x")
-        ttk.Entry(ligne, textvariable=self.graine, width=14, font=(POLICE, 11)).pack(side="left")
-        ttk.Button(ligne, text=self.t("au_hasard"),
-                   command=lambda: self.graine.set(str(gen.tirer_graine()))).pack(side="left", padx=(8, 0))
-        ttk.Label(o, text=self.t("note_graine"), style="Note.TLabel", wraplength=280,
-                  justify="left").pack(anchor="w", pady=(6, 0))
+
+        # --- Ennemis
+        ennemis, en = self.carte(droite, self.t("carte_ennemis"))
+        ennemis.pack(fill="x", pady=(16, 0))
+        ttk.Checkbutton(en, text=self.t("ennemis_aleatoires") + a_venir, variable=self.ennemis,
+                        state="disabled").pack(anchor="w")
+
+        self.notes_pleine_largeur(cadre)
 
         # --- Actions
         boutons = ttk.Frame(page)
@@ -771,10 +968,21 @@ class Application(tk.Tk):
         self.bouton_generer = ttk.Button(boutons, text=self.t("generer"), style="Accent.TButton",
                                          command=self.generer)
         self.bouton_generer.pack(side="left")
+        # graine juste à côté du bouton Générer (même graine + mêmes options = même résultat)
+        ttk.Label(boutons, text=self.t("graine")).pack(side="left", padx=(16, 6))
+        champ_graine = ttk.Entry(boutons, textvariable=self.graine, width=10, font=(POLICE, 11))
+        champ_graine.pack(side="left")
+        ttk.Button(boutons, text=self.t("au_hasard"),
+                   command=lambda: self.graine.set(str(gen.tirer_graine()))).pack(side="left", padx=(8, 0))
+        Infobulle(champ_graine, self.t("note_graine"))
         ttk.Checkbutton(boutons, text=self.t("installer_seed_case"), style="Fond.TCheckbutton",
                         variable=self.installer).pack(side="left", padx=(16, 0))
         ttk.Button(boutons, text=self.t("dossier_seeds"),
                    command=self.ouvrir_seeds).pack(side="right")
+        # supprimer la seed installée : juste à gauche de « Dossier des seeds »
+        self.bouton_retirer_seed = ttk.Button(boutons, text=self.t("supprimer_seed"),
+                                              style="Danger.TButton", command=self.retirer_seed)
+        self.bouton_retirer_seed.pack(side="right", padx=(0, 8))
 
         # --- Journal de l'application
         zone = tk.Frame(page, bg=COULEURS["bord"], padx=1, pady=1)
@@ -789,6 +997,23 @@ class Application(tk.Tk):
         defil.pack(side="right", fill="y")
         self.journal.pack(side="left", fill="both", expand=True)
 
+        # place libre sous les cartes : donnée au journal (les cartes ne prennent que la hauteur dont elles ont
+        # besoin) ; si elles ne tiennent plus (liste des armes ouverte, petit écran), elles défilent comme avant
+        def ajuster(_=None):
+            besoin = cadre.winfo_reqheight()
+            libre = page.winfo_height() - boutons.winfo_height() - 12 - 14 - 110   # 110 : journal minimum
+            if libre <= 1:
+                return
+            if besoin <= libre:
+                defile.toile.configure(height=besoin)
+                page.rowconfigure(0, weight=0)
+                page.rowconfigure(2, weight=1)
+            else:
+                page.rowconfigure(0, weight=1)
+                page.rowconfigure(2, weight=0)
+        page.bind("<Configure>", ajuster, add="+")
+        cadre.bind("<Configure>", lambda _: self.after_idle(ajuster), add="+")
+
     # --- onglet « Spoiler » : la liste complète des changements, cachée tant qu'on ne coche pas
     def construire_spoiler(self, cadre):
         cadre.columnconfigure(0, weight=1)
@@ -799,17 +1024,149 @@ class Application(tk.Tk):
                         command=self.afficher_resultat).pack(anchor="w")
         self.note_spoiler = ttk.Label(s, style="Note.TLabel", wraplength=660, justify="left")
         self.note_spoiler.pack(anchor="w", padx=(27, 0), pady=(2, 10))
+        # barre de recherche : ne garde que les lignes qui contiennent le texte (sans tenir compte des accents)
+        barre = ttk.Frame(s, style="Carte.TFrame", borderwidth=0)
+        barre.pack(anchor="w", fill="x", pady=(0, 8))
+        ttk.Label(barre, text=self.t("rechercher"), style="Carte.TLabel").pack(side="left")
+        self.champ_recherche = ttk.Entry(barre, textvariable=self.recherche_spoiler, width=32,
+                                         font=(POLICE, 11))
+        self.champ_recherche.pack(side="left", padx=(8, 0))
+        ttk.Button(barre, text=self.t("effacer_recherche"),
+                   command=lambda: self.recherche_spoiler.set("")).pack(side="left", padx=(8, 0))
+        self.compte_recherche = ttk.Label(barre, style="Note.TLabel")
+        self.compte_recherche.pack(side="left", padx=(12, 0))
+        # tableau en 3 colonnes : lieu | objet d'origine | objet qui le remplace (clic sur un titre = tri)
         zone = tk.Frame(s, bg=COULEURS["bord"], padx=1, pady=1)
         zone.pack(fill="both", expand=True)
-        self.zone_spoiler = tk.Text(zone, width=1, height=10, wrap="word", state="disabled",
-                                    font=self.police_texte(), bg=COULEURS["journal"], fg=COULEURS["texte"],
-                                    selectbackground=COULEURS["accent"], relief="flat", borderwidth=0,
-                                    padx=12, pady=10, highlightthickness=0)
+        st = ttk.Style(self)
+        st.configure("Spoiler.Treeview", background=COULEURS["journal"], fieldbackground=COULEURS["journal"],
+                     foreground=COULEURS["texte"], rowheight=28, font=(POLICE, 10), borderwidth=0)
+        st.map("Spoiler.Treeview", background=[("selected", COULEURS["survol"])],
+               foreground=[("selected", "#ffffff")])
+        st.configure("Spoiler.Treeview.Heading", background=COULEURS["carte"], foreground=COULEURS["discret"],
+                     font=(POLICE, 10, "bold"), relief="flat", padding=(8, 6))
+        st.map("Spoiler.Treeview.Heading", background=[("active", COULEURS["survol"])])
+        st.layout("Spoiler.Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
+        colonnes = ("lieu", "origine", "nouveau")
+        self.zone_spoiler = ttk.Treeview(zone, columns=colonnes, show="headings", style="Spoiler.Treeview",
+                                         selectmode="browse")
+        self.tri_spoiler = ("lieu", False)          # (colonne, ordre inverse)
+        for col, largeur in zip(colonnes, (420, 260, 300)):
+            self.zone_spoiler.heading(col, text=self.t(f"col_{col}"), anchor="w",
+                                      command=lambda c=col: self.trier_spoiler(c))
+            self.zone_spoiler.column(col, width=largeur, minwidth=120, anchor="w", stretch=True)
+        self.zone_spoiler.tag_configure("impair", background=COULEURS["carte"])
+        self.zone_spoiler.tag_configure("meme", foreground=COULEURS["discret"])     # objet inchangé
+        self.zone_spoiler.tag_configure("bonus", foreground="#ff6b6b", font=(POLICE, 10, "bold"))
         defil = ttk.Scrollbar(zone, orient="vertical", style="Mince.Vertical.TScrollbar",
                               command=self.zone_spoiler.yview)
         self.zone_spoiler.configure(yscrollcommand=defil.set)
         defil.pack(side="right", fill="y")
         self.zone_spoiler.pack(side="left", fill="both", expand=True)
+        # lignes verticales entre les colonnes (le Treeview n'en dessine pas) : posées par-dessus, recalées
+        # quand la fenêtre ou une colonne change de taille
+        self.separateurs_spoiler = [tk.Frame(self.zone_spoiler, bg=COULEURS["bord"], width=1,
+                                             cursor="sb_h_double_arrow") for _ in colonnes[1:]]
+        self.glisse_colonne = None                  # (n° de la limite, x de départ, largeurs de départ)
+        t = self.zone_spoiler
+        t.bind("<Configure>", lambda _: self.after_idle(self.placer_separateurs), add="+")
+        t.bind("<Motion>", self.survol_colonnes, add="+")
+        t.bind("<ButtonPress-1>", self.saisir_colonne, add="+")
+        t.bind("<B1-Motion>", self.glisser_colonne, add="+")
+        t.bind("<ButtonRelease-1>", self.lacher_colonne, add="+")
+        for ligne in self.separateurs_spoiler:     # la ligne elle-même s'attrape aussi
+            ligne.bind("<ButtonPress-1>", lambda e, l=ligne: self.saisir_colonne(e, l.winfo_x() + e.x))
+            ligne.bind("<B1-Motion>", lambda e, l=ligne: self.glisser_colonne(e, l.winfo_x() + e.x))
+            ligne.bind("<ButtonRelease-1>", self.lacher_colonne)
+        self.after_idle(self.placer_separateurs)
+
+    # --- largeur des colonnes du spoiler : on attrape une limite (dans les titres ou les lignes) et on glisse
+    def limite_proche(self, x, marge=5):
+        """N° de la limite de colonne à moins de « marge » pixels de x, ou None."""
+        bord = 0
+        for i, col in enumerate(self.zone_spoiler["columns"][:-1]):
+            bord += self.zone_spoiler.column(col, "width")
+            if abs(x - bord) <= marge:
+                return i
+        return None
+
+    def survol_colonnes(self, e):
+        if self.glisse_colonne is None:
+            self.zone_spoiler.configure(cursor="sb_h_double_arrow" if self.limite_proche(e.x) is not None else "")
+
+    def saisir_colonne(self, e, x=None):
+        x = e.x if x is None else x
+        i = self.limite_proche(x)
+        if i is None:
+            return None
+        cols = self.zone_spoiler["columns"]
+        self.glisse_colonne = (i, x, self.zone_spoiler.column(cols[i], "width"),
+                               self.zone_spoiler.column(cols[i + 1], "width"))
+        return "break"
+
+    def glisser_colonne(self, e, x=None):
+        if self.glisse_colonne is None:
+            return None
+        x = e.x if x is None else x
+        i, x0, gauche, droite = self.glisse_colonne
+        dx = max(80 - gauche, min(x - x0, droite - 80))     # chaque colonne garde au moins 80 px
+        cols = self.zone_spoiler["columns"]
+        self.zone_spoiler.column(cols[i], width=gauche + dx)
+        self.zone_spoiler.column(cols[i + 1], width=droite - dx)
+        self.placer_separateurs()
+        return "break"
+
+    def lacher_colonne(self, _=None):
+        if self.glisse_colonne is None:
+            return None
+        self.glisse_colonne = None
+        self.placer_separateurs()
+        return "break"
+
+    def placer_separateurs(self):
+        """Place les lignes de séparation à la limite droite de chaque colonne (sauf la dernière)."""
+        x = 0
+        for col, ligne in zip(self.zone_spoiler["columns"], self.separateurs_spoiler):
+            x += self.zone_spoiler.column(col, "width")
+            ligne.place(x=x - 1, y=0, width=1, relheight=1)
+
+    def trier_spoiler(self, colonne):
+        """Clic sur un titre de colonne : trie le tableau du spoiler (un 2e clic inverse l'ordre)."""
+        actuelle, inverse = self.tri_spoiler
+        self.tri_spoiler = (colonne, not inverse if colonne == actuelle else False)
+        self.afficher_resultat()
+
+    def notes_pleine_largeur(self, racine_widget):
+        """Les petites notes grises suivent la largeur de leur carte (au lieu d'une largeur fixe qui laisse la
+        moitié droite des cartes vide) : chaque note se recalcule quand sa carte change de taille."""
+        def parcourir(w):
+            for enfant in w.winfo_children():
+                if isinstance(enfant, ttk.Label) and str(enfant.cget("style")) == "Note.TLabel":
+                    try:
+                        retrait = enfant.pack_info().get("padx", 0)
+                    except tk.TclError:
+                        retrait = 0
+                    if isinstance(retrait, (tuple, list)):
+                        retrait = retrait[0]
+                    elif isinstance(retrait, str):
+                        retrait = int(str(retrait).split()[0])
+                    enfant.master.bind("<Configure>", lambda e, l=enfant, r=int(retrait):
+                                       l.configure(wraplength=max(160, e.width - r - 12)), add="+")
+                parcourir(enfant)
+        parcourir(racine_widget)
+
+    def afficher_liste_bonus(self):
+        """Cases des armes bonus sous « Armes bonus » (seulement quand la case est cochée)."""
+        if self.armes_bonus.get():
+            self.liste_bonus.pack(anchor="w", padx=(27, 0), pady=(4, 0), after=self.note_bonus)
+        else:
+            self.liste_bonus.pack_forget()
+
+    def armes_bonus_choisies(self):
+        """Ids des armes bonus cochées (vide si l'option est décochée)."""
+        if not self.armes_bonus.get():
+            return set()
+        return {ident for ident, v in self.bonus_coches.items() if v.get()}
 
     def afficher_liste_armes(self):
         """Liste des armes sous « Armes aléatoires » (seulement quand la case est cochée).
@@ -821,6 +1178,8 @@ class Application(tk.Tk):
         for case, id_arme, perso in self.cases_armes.values():
             dispo = id_arme is not None and perso in (None, self.personnage.get())
             case.state(["!disabled"] if dispo else ["disabled"])
+        if hasattr(self, "case_arme_depart"):
+            self.case_arme_depart.state(["!disabled"] if self.armes.get() else ["disabled"])
 
     def armes_choisies(self):
         """Ids des armes cochées et utilisables (envoyés au générateur)."""
@@ -834,8 +1193,12 @@ class Application(tk.Tk):
         dossier = self.dossier_jeu.get()
         seed = gen.seed_installee(dossier) if dossier and Path(dossier).exists() else None
         if seed:
-            fichier = self.dossier_seeds / f"seed_{seed[0]}{'_armes' if seed[1] else ''}_spoiler.txt"
-            if fichier.exists():
+            base = f"seed_{seed[0]}{'_armes' if seed[1] else ''}"
+            # avec ou sans armes bonus : on prend le spoiler le plus récent de cette graine
+            fichiers = [f for f in (self.dossier_seeds / f"{base}_spoiler.txt",
+                                    self.dossier_seeds / f"{base}_bonus_spoiler.txt") if f.exists()]
+            if fichiers:
+                fichier = max(fichiers, key=lambda f: f.stat().st_mtime)
                 return self.t("spoiler_installe"), fichier.read_text(encoding="utf-8")
         return None, None
 
@@ -856,7 +1219,7 @@ class Application(tk.Tk):
 
         projet, p = self.carte(cadre, self.t("carte_projet"))
         projet.grid(row=0, column=0, sticky="nsew")
-        ttk.Label(p, text=f"Randomizer Resident Evil HD Remaster  ·  v{VERSION}", style="Nom.TLabel"
+        ttk.Label(p, text=f"{NOM_APPLI}  ·  v{VERSION}", style="Nom.TLabel"
                   ).pack(anchor="w")
         ttk.Label(p, text=self.t("info_description"), style="Carte.TLabel", wraplength=660,
                   justify="left").pack(anchor="w", pady=(4, 6))
@@ -1227,7 +1590,8 @@ class Application(tk.Tk):
                                   installer, self.dossier_jeu.get() or None, messages.append,
                                   personnage=self.personnage.get(), difficulte=self.difficulte.get(),
                                   langue=langue, dire_spoiler=spoiler.append, armes_choisies=armes,
-                                  objets_visibles=self.visibles.get(), arme_depart=self.arme_depart.get())
+                                  objets_visibles=self.visibles.get(), arme_depart=self.arme_depart.get(),
+                                  armes_bonus=self.armes_bonus_choisies())
             except Exception as e:  # on affiche l'erreur plutôt que de fermer l'application
                 messages.append(textes.tr("erreur", langue, e=e))
                 ok = False
@@ -1260,11 +1624,53 @@ class Application(tk.Tk):
             note, contenu = titre, texte
         else:
             note, contenu = self.t("spoiler_masque", titre=titre), ""
+        if not hasattr(self, "zone_spoiler"):
+            return                                  # appelé pendant la construction de la fenêtre
+        resume, lignes = lire_spoiler(contenu)
+        if resume and contenu:
+            note += "\n" + "  ·  ".join(resume)
         self.note_spoiler.configure(text=note)
-        self.zone_spoiler.configure(state="normal")
-        self.zone_spoiler.delete("1.0", "end")
-        self.zone_spoiler.insert("end", contenu)
-        self.zone_spoiler.configure(state="disabled")
+        cherche = sans_accents(self.recherche_spoiler.get().strip())
+        if cherche:
+            lignes = [l for l in lignes if cherche in sans_accents(" ".join(l[:3]))]
+        self.compte_recherche.configure(text=self.t("resultats_recherche", n=len(lignes)) if cherche and contenu else "")
+        colonne, inverse = self.tri_spoiler
+        i_col = ("lieu", "origine", "nouveau").index(colonne)
+        lignes.sort(key=lambda l: sans_accents(l[i_col]), reverse=inverse)
+        self.zone_spoiler.delete(*self.zone_spoiler.get_children())
+        for n, (lieu, origine, nouveau, bonus) in enumerate(lignes):
+            tags = ["impair"] if n % 2 else []
+            if bonus:
+                tags.append("bonus")
+            elif origine == nouveau:
+                tags.append("meme")
+            self.zone_spoiler.insert("", "end", values=(lieu, origine, nouveau), tags=tags)
+
+
+MOTIF_LIGNE_SPOILER = re.compile(r"^\[\s*([0-9A-Za-z]+)\] (.+?): (.+?)  ->  (.+)$")
+
+
+def lire_spoiler(texte):
+    """Découpe le spoiler texte (fichier *_spoiler.txt) en (résumé, lignes du tableau).
+    Ligne : (lieu, objet d'origine, nouvel objet, arme bonus ?). Les lignes non reconnues sont ignorées."""
+    if not texte:
+        return [], []
+    brut = texte.splitlines()
+    resume = [l for l in brut[:2] if l.strip()]
+    lignes = []
+    for l in brut:
+        m = MOTIF_LIGNE_SPOILER.match(l)
+        if m:
+            piece, nom_piece, origine, nouveau = m.groups()
+            bonus = not re.search(r" x\d+$", nouveau)      # seules les armes bonus n'ont pas de quantité
+            lignes.append((f"{piece.upper()} · {nom_piece}", origine, nouveau, bonus))
+    return resume, lignes
+
+
+def sans_accents(texte):
+    """Minuscules sans accents, même longueur que le texte (pour la recherche dans le spoiler)."""
+    return "".join(unicodedata.normalize("NFD", c)[0] for c in texte).lower()
+
 
 if __name__ == "__main__":
     Application().mainloop()

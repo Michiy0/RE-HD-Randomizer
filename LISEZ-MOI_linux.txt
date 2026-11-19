@@ -7,9 +7,9 @@ comme d'habitude.
 SUR STEAM DECK
 1. Passe en mode Bureau (bouton Steam → Alimentation → Passer au Bureau).
 2. Extrais cette archive où tu veux, par exemple dans ton dossier personnel.
-3. Si besoin, rends le fichier exécutable : clic droit sur RandomizerREHD-linux →
+3. Si besoin, rends le fichier exécutable : clic droit sur Resident Evil HD Remaster Randomizer →
    Propriétés → Permissions → coche « Est exécutable ».
-4. Double-clique sur RandomizerREHD-linux.
+4. Double-clique sur Resident Evil HD Remaster Randomizer.
    Le jeu est trouvé automatiquement dans ta bibliothèque Steam (sinon « Parcourir… »).
 5. Clique « Installer la DLL ».
 6. Clique « Copier » à côté de l'option de lancement, puis dans Steam :

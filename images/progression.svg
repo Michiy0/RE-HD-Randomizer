@@ -61,6 +61,8 @@
 <line x1="28" y1="384" x2="772" y2="384" stroke="#2c313b"/>
 <text x="28" y="414" font-size="14" font-weight="700" fill="#e7e9ee">Armes bonus</text>
 <rect x="200" y="403" width="300" height="12" rx="6" fill="#262a33"/>
-<text x="520" y="414" font-size="14" font-weight="700" fill="#e7e9ee">0/2</text>
+<rect x="200" y="403" width="300" height="12" rx="6" fill="#5a2a2e"/>
+<rect x="200" y="403" width="300" height="12" rx="6" fill="#b3262e"/>
+<text x="520" y="414" font-size="14" font-weight="700" fill="#e7e9ee">2/2</text>
 <text x="566" y="414" font-size="12" fill="#8a909c">identifiées</text>
 </svg>

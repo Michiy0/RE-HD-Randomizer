@@ -4,7 +4,7 @@
 Merci de tester ! Il faut le jeu sur Steam, à jour.
 
 INSTALLER
-1. Lance RandomizerREHD.exe.
+1. Lance Resident Evil HD Remaster Randomizer.exe.
    Si Windows affiche « Windows a protégé votre ordinateur » : clique
    « Informations complémentaires » puis « Exécuter quand même » (l'exe n'est pas signé).
 2. Vérifie que le dossier du jeu est le bon (sinon « Parcourir… »).

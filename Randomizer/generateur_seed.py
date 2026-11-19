@@ -75,6 +75,11 @@ ARMES = [
     ("arme_magnums", None, None),
 ]
 IDS_ARMES = {i for _, i, _ in ARMES if i is not None}
+# Armes bonus (option « Fun ») : ids confirmés par une seed de test le 19/11/2026 (munitions illimitées gérées par
+# le jeu). Pas de modèle au sol (i005p / i014p n'existent pas) : la DLL les remplace seulement au ramassage.
+# (clé du nom dans textes.py, id, quantité) : Samurai Edge, lance-roquettes illimité
+ARMES_BONUS = [("arme_bonus_samurai", 5, 15), ("arme_bonus_roquettes", 14, 4)]
+IDS_ARMES_BONUS = {i for _, i, _ in ARMES_BONUS}
 
 MOTIF_EMPREINTE = re.compile(r"brut \+0x10\.\.\+0x2C = ((?:[0-9A-Fa-f]{8}\s*){8})")
 
@@ -164,6 +169,22 @@ def garantir_arme_depart(resultat, graine, ids_armes):
     choix = random.Random(graine ^ 0x5EED).choice(sorted(fortes or armes, key=lambda r: (r["piece"], r["nouveau"]["id"])))
     depart["nouveau"], choix["nouveau"] = choix["nouveau"], depart["nouveau"]
     return depart["nouveau"]["id"]
+
+
+def placer_armes_bonus(resultat, graine, ids_bonus=None):
+    """Option « Armes bonus » (Fun) : chaque arme bonus choisie (Samurai Edge, lance-roquettes illimité) remplace un
+    objet ordinaire choisi selon la graine (jamais une arme, ni l'emplacement de départ du hall). ids_bonus : ids
+    à placer (None = toutes). Chaque arme garde sa place, qu'on coche l'autre ou non. Renvoie les pièces."""
+    candidats = [r for r in resultat if r["nouveau"]["id"] not in IDS_ARMES
+                 and not (r["piece"].lower() == PIECE_DEPART and r["ancien"]["id"] == ID_DEPART)]
+    candidats.sort(key=lambda r: (r["piece"], r["empreinte"]))
+    choix = random.Random(graine ^ 0xB0B05).sample(candidats, min(len(ARMES_BONUS), len(candidats)))
+    places = []
+    for r, (_, ident, qte) in zip(choix, ARMES_BONUS):
+        if ids_bonus is None or ident in ids_bonus:
+            r["nouveau"] = {"id": ident, "quantite": qte}
+            places.append(r["piece"])
+    return places
 
 
 def verifier(resultat):
@@ -258,20 +279,24 @@ def tirer_graine():
 
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
              dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None,
-             armes_choisies=None, objets_visibles=True, arme_depart=False):
+             armes_choisies=None, objets_visibles=True, arme_depart=False, armes_bonus=False):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
     Renvoie True si tout s'est bien passé. langue : langue des messages et du spoiler (textes.py).
     dire_spoiler : si donné, reçoit le spoiler complet (sinon il passe par dire).
     armes_choisies : ids des armes à mélanger avec armes_aleatoires (None = toutes celles connues).
     objets_visibles : la DLL remplace aussi les objets posés (modèle par terre et aperçu) avant ramassage.
-    arme_depart : avec armes_aleatoires, une arme est toujours placée au pistolet du hall (106)."""
+    arme_depart : avec armes_aleatoires, une arme est toujours placée au pistolet du hall (106).
+    armes_bonus : ids des armes bonus à placer (option « Fun ») ; True = toutes, False / None / vide = aucune."""
     if not Path(fichier).exists():
         dire(tr("gen_donnees", langue, fichier=fichier))
         return False
     ids_armes = set(IDS_ARMES) if armes_choisies is None else set(armes_choisies) & IDS_ARMES
     armes_aleatoires = bool(armes_aleatoires and ids_armes)   # aucune arme cochée = option sans effet
     ids_libres = set(IDS_LIBRES_DE_BASE) | (ids_armes if armes_aleatoires else set())
-    nom = f"seed_{graine}{'_armes' if armes_aleatoires else ''}"
+    if armes_bonus is True:
+        armes_bonus = set(IDS_ARMES_BONUS)
+    armes_bonus = set(armes_bonus or ()) & IDS_ARMES_BONUS
+    nom = f"seed_{graine}{'_armes' if armes_aleatoires else ''}{'_bonus' if armes_bonus else ''}"
     sortie_dir = Path(dossier_sortie)
     sortie_dir.mkdir(parents=True, exist_ok=True)
 
@@ -283,14 +308,17 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     resultat = generer(emplacements, graine, ids_libres)
     if arme_depart and armes_aleatoires:
         garantir_arme_depart(resultat, graine, ids_armes)
-    verifier(resultat)
+    verifier(resultat)                       # avant les armes bonus : elles remplacent des objets (ajout voulu)
+    if armes_bonus:
+        placer_armes_bonus(resultat, graine, armes_bonus)
 
     sortie = {
         "version_jeu": {"taille_bhd_exe": 9640360,
                         "sha256": "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"},
         "personnage": personnage, "difficulte": difficulte,
         "graine": graine, "options": {"armes_aleatoires": armes_aleatoires, "objets_visibles": bool(objets_visibles),
-                                      "arme_depart": bool(arme_depart and armes_aleatoires)},
+                                      "arme_depart": bool(arme_depart and armes_aleatoires),
+                                      "armes_bonus": sorted(armes_bonus)},
         "remplacements": resultat,
     }
     (sortie_dir / f"{nom}.json").write_text(json.dumps(sortie, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -323,6 +351,8 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     fichier_lua.write_text("\n".join(lua) + "\n", encoding="utf-8")
 
     nom_objet = lambda ident: tr(f"objet_{ident}", langue)
+    # quantité affichée, sauf pour les armes bonus : munitions illimitées (le nom le dit déjà)
+    fois = lambda o: "" if o["id"] in IDS_ARMES_BONUS else f" x{o['quantite']}"
     lignes = [tr("gen_resume", langue, graine=graine,
                  armes=tr("gen_oui" if armes_aleatoires else "gen_non", langue)),
               tr("gen_compte", langue, n=len(resultat), m=len(emplacements) - len(resultat),
@@ -330,7 +360,7 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     for r in sorted(resultat, key=lambda x: x["piece"]):
         a, n = r["ancien"], r["nouveau"]
         lignes.append(f"[{r['piece'].upper():>3}] {r['nom_piece']}: "
-                      f"{nom_objet(a['id'])} x{a['quantite']}  ->  {nom_objet(n['id'])} x{n['quantite']}")
+                      f"{nom_objet(a['id'])}{fois(a)}  ->  {nom_objet(n['id'])}{fois(n)}")
     if ignores:
         lignes += ["", tr("gen_non_utilises", langue)]
         lignes += [f"  - [{f['piece'].upper()}] {f['description']}" for f, _ in ignores]
@@ -350,6 +380,8 @@ def main():
                         help="mélange aussi le pistolet (Chris doit alors trouver son arme)")
     parser.add_argument("--objets-invisibles", action="store_true",
                         help="ne remplace les objets qu'au ramassage (par terre, on voit l'objet d'origine)")
+    parser.add_argument("--armes-bonus", action="store_true",
+                        help="Samurai Edge et lance-roquettes illimité à la place de deux objets (option Fun)")
     parser.add_argument("--fichier", default=FICHIER_PAR_DEFAUT, help="tableur de données")
     parser.add_argument("--personnage", default="Chris", choices=("Chris", "Jill"))
     parser.add_argument("--difficulte", default="Normal",
@@ -362,7 +394,7 @@ def main():
     graine = args.graine if args.graine is not None else tirer_graine()
     if not produire(graine, args.armes_aleatoires, args.fichier, ".", args.installer, args.dossier_jeu,
                     personnage=args.personnage, difficulte=args.difficulte,
-                    objets_visibles=not args.objets_invisibles):
+                    objets_visibles=not args.objets_invisibles, armes_bonus=args.armes_bonus):
         sys.exit(1)
 
 
