@@ -39,12 +39,12 @@ or strategies.
 </tr>
 </table>
 
-## Status: version 0.8.9 (test)
+## Status: version 0.8.10 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty | Jill, other difficulties |
-| 101 placed-item locations: ammo (handgun and shotgun), green and red herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
+| 124 placed-item locations: ammo (handgun and shotgun), green and red herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
 | **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items (with keys) |
 | **Random weapons** option, with a choice of which weapons to shuffle (handgun, shotgun, assault shotgun) and a **guaranteed starting weapon** option | The other weapons, **bonus weapons** (unlimited Samurai Edge and rocket launcher), random enemies |
 | Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | — |
@@ -68,7 +68,7 @@ Percentage of rooms surveyed in a **new game**, for each character and difficult
 |---|---|---|---|---|
 | Chris | Very Easy | 0/118 (0%) | 0 | 0 |
 | Chris | Easy | 0/118 (0%) | 0 | 0 |
-| Chris | Normal | 74/118 (63%) | 3 | 177 |
+| Chris | Normal | 96/118 (81%) | 1 | 219 |
 | Chris | Hard | 0/118 (0%) | 0 | 0 |
 | Chris | Real Survival | 0/118 (0%) | 0 | 0 |
 | Jill | Very Easy | 0/118 (0%) | 0 | 0 |
@@ -314,12 +314,12 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.8.9 (test)
+## État : version 0.8.10 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal | Jill, autres difficultés |
-| 101 emplacements d'objets posés : munitions (pistolet et fusil), herbes vertes et rouges, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
+| 124 emplacements d'objets posés : munitions (pistolet et fusil), herbes vertes et rouges, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
 | **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles (avec les clés) |
 | Option **armes aléatoires**, avec le choix des armes à mélanger (pistolet, fusil, fusil d'assaut) et option **arme garantie au départ** | Les autres armes, **armes bonus** (Samurai Edge et lance-roquettes illimités), ennemis aléatoires |
 | Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | — |
@@ -343,7 +343,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 |---|---|---|---|---|
 | Chris | Très facile | 0/118 (0 %) | 0 | 0 |
 | Chris | Facile | 0/118 (0 %) | 0 | 0 |
-| Chris | Normal | 74/118 (63 %) | 3 | 177 |
+| Chris | Normal | 96/118 (81 %) | 1 | 219 |
 | Chris | Difficile | 0/118 (0 %) | 0 | 0 |
 | Chris | Real Survival | 0/118 (0 %) | 0 | 0 |
 | Jill | Très facile | 0/118 (0 %) | 0 | 0 |
