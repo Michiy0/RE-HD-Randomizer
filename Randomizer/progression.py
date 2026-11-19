@@ -8,8 +8,9 @@ Calcul, à partir du tableur :
     Les pièces visitées en partie déjà commencée sont montrées en plus pâle (relevé incomplet).
   - armes bonus (onglet « Bonus ») : lignes dont l'ID objet est connu, sur toutes les lignes.
 
-Produit images/progression.svg et remplace la section du README comprise entre
-<!-- progression:debut --> et <!-- progression:fin -->.
+Produit images/progression.svg (français) et images/progression_en.svg (anglais), et remplace les sections
+du README comprises entre <!-- progression:debut --> et <!-- progression:fin --> (partie française) et entre
+<!-- progression-en:debut --> et <!-- progression-en:fin --> (partie anglaise).
 
     python Randomizer\progression.py            (appelé aussi par preparer_publication.py)
 """
@@ -24,7 +25,38 @@ from openpyxl import load_workbook
 RACINE = Path(__file__).resolve().parent.parent
 PERSONNAGES = ("Chris", "Jill")
 DIFFICULTES = ("Très facile", "Facile", "Normal", "Difficile", "Real Survival")
-DEBUT, FIN = "<!-- progression:debut -->", "<!-- progression:fin -->"
+BALISES = {"fr": ("<!-- progression:debut -->", "<!-- progression:fin -->"),
+           "en": ("<!-- progression-en:debut -->", "<!-- progression-en:fin -->")}
+
+# textes du graphique et du tableau, par langue
+TEXTES = {
+    "fr": {
+        "titre": "Avancement des relevés",
+        "sous_titre": "Pièces relevées en nouvelle partie, sur {n} pièces · mis à jour le {date}",
+        "complete": "complète", "commencee": "partie commencée",
+        "visitees": "+{n} visitées", "objets": "{n} objets",
+        "bonus": "Armes bonus", "identifiees": "identifiées", "a_completer": "liste à compléter",
+        "pct": "{p} %",
+        "difficultes": dict(zip(DIFFICULTES, DIFFICULTES)),
+        "detail": "Détail (texte)",
+        "entete": "| Personnage | Difficulté | Pièces complètes | Visitées (partie commencée) | Objets relevés |",
+        "pied": "Armes bonus : {bonus}. Mis à jour le {date}.",
+        "date": "%d/%m/%Y",
+    },
+    "en": {
+        "titre": "Survey progress",
+        "sous_titre": "Rooms surveyed in a new game, out of {n} rooms · updated {date}",
+        "complete": "complete", "commencee": "game in progress",
+        "visitees": "+{n} visited", "objets": "{n} items",
+        "bonus": "Bonus weapons", "identifiees": "identified", "a_completer": "list to be completed",
+        "pct": "{p}%",
+        "difficultes": dict(zip(DIFFICULTES, ("Very Easy", "Easy", "Normal", "Hard", "Real Survival"))),
+        "detail": "Details (text)",
+        "entete": "| Character | Difficulty | Complete rooms | Visited (game in progress) | Items surveyed |",
+        "pied": "Bonus weapons: {bonus}. Updated {date}.",
+        "date": "%Y-%m-%d",
+    },
+}
 
 # mêmes couleurs que l'application
 FOND, CARTE, BORD = "#15171c", "#1e2128", "#2c313b"
@@ -62,7 +94,8 @@ def calculer(fichier):
     }
 
 
-def dessiner_svg(res, date):
+def dessiner_svg(res, date, langue="fr"):
+    tx = TEXTES[langue]
     largeur, x_label, x_barre, l_barre, x_texte = 800, 28, 200, 300, 520
     haut_ligne, y0 = 30, 92
     lignes = [(p, d) for p in PERSONNAGES for d in DIFFICULTES]
@@ -70,17 +103,17 @@ def dessiner_svg(res, date):
     t = res["total_pieces"] or 1
     o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{largeur}" height="{hauteur}" '
          f'viewBox="0 0 {largeur} {hauteur}" font-family="{POLICE}" role="img" '
-         f'aria-label="Avancement des relevés du randomizer">',
+         f'aria-label="{escape(tx["titre"])}">',
          f'<rect width="{largeur}" height="{hauteur}" rx="14" fill="{FOND}"/>',
          f'<rect x="8" y="8" width="{largeur - 16}" height="{hauteur - 16}" rx="10" fill="{CARTE}" stroke="{BORD}"/>',
-         f'<text x="{x_label}" y="44" font-size="20" font-weight="700" fill="{TEXTE}">Avancement des relevés</text>',
-         f'<text x="{x_label}" y="66" font-size="12" fill="{DISCRET}">Pièces relevées en nouvelle partie, sur '
-         f'{res["total_pieces"]} pièces · mis à jour le {escape(date)}</text>',
+         f'<text x="{x_label}" y="44" font-size="20" font-weight="700" fill="{TEXTE}">{escape(tx["titre"])}</text>',
+         f'<text x="{x_label}" y="66" font-size="12" fill="{DISCRET}">'
+         f'{escape(tx["sous_titre"].format(n=res["total_pieces"], date=date))}</text>',
          # légende
          f'<rect x="{largeur - 252}" y="36" width="12" height="12" rx="3" fill="{ACCENT}"/>'
-         f'<text x="{largeur - 234}" y="46" font-size="12" fill="{DISCRET}">complète</text>',
+         f'<text x="{largeur - 234}" y="46" font-size="12" fill="{DISCRET}">{tx["complete"]}</text>',
          f'<rect x="{largeur - 160}" y="36" width="12" height="12" rx="3" fill="{PALE}"/>'
-         f'<text x="{largeur - 142}" y="46" font-size="12" fill="{DISCRET}">partie commencée</text>']
+         f'<text x="{largeur - 142}" y="46" font-size="12" fill="{DISCRET}">{tx["commencee"]}</text>']
 
     def barre(y, part_pleine, part_pale):
         o.append(f'<rect x="{x_barre}" y="{y - 11}" width="{l_barre}" height="12" rx="6" fill="{VIDE}"/>')
@@ -97,15 +130,16 @@ def dessiner_svg(res, date):
         nom = p if p != perso_precedent else ""
         perso_precedent = p
         o.append(f'<text x="{x_label}" y="{y}" font-size="14" font-weight="700" fill="{TEXTE}">{escape(nom)}</text>')
-        o.append(f'<text x="{x_label + 52}" y="{y}" font-size="14" fill="{TEXTE}">{escape(d)}</text>')
+        o.append(f'<text x="{x_label + 52}" y="{y}" font-size="14" fill="{TEXTE}">{escape(tx["difficultes"][d])}</text>')
         barre(y, s["completes"] / t, s["visitees"] / t)
         pct = round(100 * s["completes"] / t)
         detail = f'{s["completes"]}/{res["total_pieces"]}'
         if s["visitees"]:
-            detail += f' · +{s["visitees"]} visitées'
+            detail += " · " + tx["visitees"].format(n=s["visitees"])
         if s["objets"]:
-            detail += f' · {s["objets"]} objets'
-        o.append(f'<text x="{x_texte}" y="{y}" font-size="14" font-weight="700" fill="{TEXTE}">{pct} %</text>')
+            detail += " · " + tx["objets"].format(n=s["objets"])
+        o.append(f'<text x="{x_texte}" y="{y}" font-size="14" font-weight="700" fill="{TEXTE}">'
+                 f'{tx["pct"].format(p=pct)}</text>')
         o.append(f'<text x="{x_texte + 46}" y="{y}" font-size="12" fill="{DISCRET}">{escape(detail)}</text>')
         y += haut_ligne
         if d == DIFFICULTES[-1] and p != PERSONNAGES[-1]:
@@ -113,48 +147,59 @@ def dessiner_svg(res, date):
 
     y += 22
     o.append(f'<line x1="{x_label}" y1="{y - 30}" x2="{largeur - x_label}" y2="{y - 30}" stroke="{BORD}"/>')
-    o.append(f'<text x="{x_label}" y="{y}" font-size="14" font-weight="700" fill="{TEXTE}">Armes bonus</text>')
+    o.append(f'<text x="{x_label}" y="{y}" font-size="14" font-weight="700" fill="{TEXTE}">{tx["bonus"]}</text>')
     if res["bonus_total"]:
         barre(y, res["bonus_connus"] / res["bonus_total"], 0)
         o.append(f'<text x="{x_texte}" y="{y}" font-size="14" font-weight="700" fill="{TEXTE}">'
                  f'{res["bonus_connus"]}/{res["bonus_total"]}</text>')
-        o.append(f'<text x="{x_texte + 46}" y="{y}" font-size="12" fill="{DISCRET}">identifiées</text>')
+        o.append(f'<text x="{x_texte + 46}" y="{y}" font-size="12" fill="{DISCRET}">{tx["identifiees"]}</text>')
     else:
         barre(y, 0, 0)
-        o.append(f'<text x="{x_texte}" y="{y}" font-size="12" fill="{DISCRET}">liste à compléter</text>')
+        o.append(f'<text x="{x_texte}" y="{y}" font-size="12" fill="{DISCRET}">{tx["a_completer"]}</text>')
     o.append("</svg>")
     return "\n".join(o) + "\n"
 
 
-def bloc_readme(res, date, chemin_image):
+def bloc_readme(res, date, chemin_image, langue="fr"):
+    tx = TEXTES[langue]
+    debut, fin = BALISES[langue]
     t = res["total_pieces"]
-    lignes = [DEBUT, "",
-              f'<img src="{chemin_image}" alt="Avancement des relevés" width="800">', "",
-              "<details><summary>Détail (texte)</summary>", "",
-              "| Personnage | Difficulté | Pièces complètes | Visitées (partie commencée) | Objets relevés |",
+    lignes = [debut, "",
+              f'<img src="{chemin_image}" alt="{tx["titre"]}" width="800">', "",
+              f"<details><summary>{tx['detail']}</summary>", "",
+              tx["entete"],
               "|---|---|---|---|---|"]
     for (p, d), s in res["scenarios"].items():
-        lignes.append(f"| {p} | {d} | {s['completes']}/{t} ({round(100 * s['completes'] / (t or 1))} %) "
+        pct = tx["pct"].format(p=round(100 * s["completes"] / (t or 1)))
+        lignes.append(f"| {p} | {tx['difficultes'][d]} | {s['completes']}/{t} ({pct}) "
                       f"| {s['visitees']} | {s['objets']} |")
-    bonus = (f"{res['bonus_connus']}/{res['bonus_total']} identifiées" if res["bonus_total"]
-             else "liste à compléter")
-    lignes += ["", f"Armes bonus : {bonus}. Mis à jour le {date}.", "", "</details>", "", FIN]
+    bonus = (f"{res['bonus_connus']}/{res['bonus_total']} {tx['identifiees']}" if res["bonus_total"]
+             else tx["a_completer"])
+    lignes += ["", tx["pied"].format(bonus=bonus, date=date), "", "</details>", "", fin]
     return "\n".join(lignes)
 
 
 def mettre_a_jour(fichier, readme, image, chemin_image_readme="images/progression.svg"):
+    """image : le graphique français ; l'anglais est écrit à côté, avec le suffixe _en (progression_en.svg)."""
     res = calculer(fichier)
-    date = datetime.now().strftime("%d/%m/%Y")
-    image.parent.mkdir(parents=True, exist_ok=True)
-    image.write_text(dessiner_svg(res, date), encoding="utf-8", newline="\n")
+    maintenant = datetime.now()
     brut = readme.read_bytes()
     crlf = b"\r\n" in brut
     texte = brut.decode("utf-8").replace("\r\n", "\n")
-    bloc = bloc_readme(res, date, chemin_image_readme)
-    motif = re.compile(re.escape(DEBUT) + r".*?" + re.escape(FIN), re.S)
-    if not motif.search(texte):
-        raise SystemExit(f"Balises {DEBUT} … {FIN} absentes de {readme}")
-    texte = motif.sub(lambda _: bloc, texte)
+    image.parent.mkdir(parents=True, exist_ok=True)
+    for langue in ("fr", "en"):
+        suffixe = "" if langue == "fr" else "_" + langue
+        date = maintenant.strftime(TEXTES[langue]["date"])
+        fichier_image = image.with_name(image.stem + suffixe + image.suffix)
+        fichier_image.write_text(dessiner_svg(res, date, langue), encoding="utf-8", newline="\n")
+        chemin = Path(chemin_image_readme)
+        chemin = chemin.with_name(chemin.stem + suffixe + chemin.suffix).as_posix()
+        debut, fin = BALISES[langue]
+        motif = re.compile(re.escape(debut) + r".*?" + re.escape(fin), re.S)
+        if not motif.search(texte):
+            raise SystemExit(f"Balises {debut} … {fin} absentes de {readme}")
+        bloc = bloc_readme(res, date, chemin, langue)
+        texte = motif.sub(lambda _: bloc, texte)
     readme.write_bytes((texte.replace("\n", "\r\n") if crlf else texte).encode("utf-8"))
     return res
 
@@ -171,7 +216,7 @@ def main():
             print(f"{p} / {d} : {s['completes']}/{res['total_pieces']} complètes, +{s['visitees']} visitées, "
                   f"{s['objets']} objets")
     print(f"Armes bonus : {res['bonus_connus']}/{res['bonus_total']}")
-    print(f"Écrit : {args.image} et la section du README")
+    print(f"Écrit : {args.image} (+ version _en) et les sections du README")
 
 
 if __name__ == "__main__":

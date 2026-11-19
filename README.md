@@ -56,10 +56,32 @@ version the randomizer stays inactive and the game is untouched.
 ### Survey progress
 
 Percentage of rooms surveyed in a **new game**, for each character and difficulty (see
-[Help the project](#help-the-project)). Updated with every version; detailed table in the
-[French section](#avancement-des-relevés).
+[Help the project](#help-the-project)). Updated with every version.
 
-<img src="images/progression.svg" alt="Survey progress" width="800">
+<!-- progression-en:debut -->
+
+<img src="images/progression_en.svg" alt="Survey progress" width="800">
+
+<details><summary>Details (text)</summary>
+
+| Character | Difficulty | Complete rooms | Visited (game in progress) | Items surveyed |
+|---|---|---|---|---|
+| Chris | Very Easy | 0/118 (0%) | 0 | 0 |
+| Chris | Easy | 0/118 (0%) | 0 | 0 |
+| Chris | Normal | 74/118 (63%) | 3 | 177 |
+| Chris | Hard | 0/118 (0%) | 0 | 0 |
+| Chris | Real Survival | 0/118 (0%) | 0 | 0 |
+| Jill | Very Easy | 0/118 (0%) | 0 | 0 |
+| Jill | Easy | 0/118 (0%) | 0 | 0 |
+| Jill | Normal | 0/118 (0%) | 0 | 0 |
+| Jill | Hard | 0/118 (0%) | 0 | 0 |
+| Jill | Real Survival | 0/118 (0%) | 0 | 0 |
+
+Bonus weapons: 0/2 identified. Updated 2026-11-19.
+
+</details>
+
+<!-- progression-en:fin -->
 
 ## Installing
 
