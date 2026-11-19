@@ -47,7 +47,9 @@ FICHIER_PAR_DEFAUT = "donnees_randomizer_RE1.xlsx"
 
 NOMS_OBJETS = {
     3: "Pistolet",
+    4: "Pistolet d'autodéfense",
     6: "Fusil",
+    13: "Fusil d'assaut",
     17: "Chargeur de pistolet",
     18: "Munitions de fusil",
     33: "Spray de premiers secours",
@@ -59,16 +61,16 @@ NOMS_OBJETS = {
     113: "Grenade aveuglante",
 }
 # Objets toujours mélangés sans risque
-IDS_LIBRES_DE_BASE = {17, 18, 33, 34, 35, 68, 101, 112, 113}   # 18, 33, 35, 113 ajoutés le 18/11/2026
+IDS_LIBRES_DE_BASE = {4, 17, 18, 33, 34, 35, 68, 101, 112, 113}   # 18, 33, 35, 113 ajoutés le 18/11/2026
+# 4 = pistolet d'autodéfense (une seule balle) : un objet comme le poignard, pas une arme de la liste (joueur, 19/11/2026)
 # Armes de base du jeu : mélangées seulement avec l'option --armes-aleatoires.
 # (clé du nom dans textes.py, id dans le jeu ou None s'il n'est pas encore relevé, personnage ou None = les deux)
 ARMES = [
     ("arme_pistolet", 3, None),
     ("arme_fusil_pompe", 6, None),          # salon (116), x6 : récompense de l'énigme du piège, pas un objet de quête
-    ("arme_fusil_assaut", None, None),
+    ("arme_fusil_assaut", 13, None),        # réservoir de l'Aqua Ring (412), x10 : sans risque (joueur, 19/11/2026)
     ("arme_lance_grenades", None, "Jill"),
     ("arme_lance_flammes", None, "Chris"),
-    ("arme_autodefense", None, None),
     ("arme_lance_roquettes", None, None),   # celui de la fin du jeu (une seule roquette), pas le bonus illimité
     ("arme_magnums", None, None),
 ]
@@ -87,7 +89,7 @@ def lire_emplacements(chemin, personnage="Chris", difficulte="Normal"):
             if ident is not None and nom:
                 noms_pieces[str(ident).lower()] = nom
     ws = wb["Emplacements"]
-    emplacements, ignores = [], []
+    emplacements, ignores, zones_vues = [], [], set()
     for ligne in ws.iter_rows(min_row=2, values_only=True):
         (_, piece, nom_piece, desc, ident, nom_obj, qte, chemin_ramassage,
          verrou, statut, empreinte, remarque, perso, diff) = (list(ligne) + [None] * 14)[:14]
@@ -106,13 +108,19 @@ def lire_emplacements(chemin, personnage="Chris", difficulte="Normal"):
             "chemin": chemin_ramassage or "",
             "empreinte": m.group(1).split() if m else None,
         }
+        zone = (fiche["piece"], tuple(fiche["empreinte"] or ()))
         if fiche["chemin"] != "posé" or not fiche["empreinte"]:
             ignores.append((fiche, "pas de valeurs fixes complètes ou pas un objet posé"))
+        elif zone in zones_vues:
+            # plusieurs objets dans la même zone (ex. les symboles d'une tombe) : la DLL reconnaît un emplacement
+            # à sa zone, elle ne saurait pas lequel remplacer → seul le premier est utilisé
+            ignores.append((fiche, "zone partagée avec un autre objet de la pièce"))
         elif qte is None:
             # sans quantité, on placerait par exemple un chargeur vide ailleurs : on laisse l'objet en place
             fiche["description"] = (fiche["description"] or "") + " (quantité inconnue)"
             ignores.append((fiche, "quantité inconnue"))
         else:
+            zones_vues.add(zone)
             emplacements.append(fiche)
     return emplacements, ignores
 
@@ -133,6 +141,29 @@ def generer(emplacements, graine, ids_libres):
             "nom_piece": e["nom_piece"],
         })
     return resultat
+
+
+# Emplacement « de départ » : le pistolet du hall (106), atteint dans les premières minutes.
+PIECE_DEPART, ID_DEPART = "106", 3
+
+
+def garantir_arme_depart(resultat, graine, ids_armes):
+    """Option « arme garantie au départ » : l'emplacement du pistolet du hall reçoit une arme (choisie au hasard,
+    selon la graine, parmi les armes mélangées). On échange simplement deux objets du résultat : la seed contient
+    toujours exactement les mêmes objets. Le pistolet d'autodéfense (une seule balle) n'est choisi que s'il est la
+    seule arme. Renvoie l'id de l'arme placée au départ, ou None si rien à faire."""
+    depart = next((r for r in resultat if r["piece"].lower() == PIECE_DEPART and r["ancien"]["id"] == ID_DEPART), None)
+    if depart is None:
+        return None                                  # pistolet non mélangé : il reste au hall, déjà une arme
+    armes = [r for r in resultat if r["nouveau"]["id"] in ids_armes]
+    fortes = [r for r in armes if r["nouveau"]["id"] != 4]
+    if depart["nouveau"]["id"] in ids_armes and (depart["nouveau"]["id"] != 4 or not fortes):
+        return depart["nouveau"]["id"]
+    if not armes:
+        return None
+    choix = random.Random(graine ^ 0x5EED).choice(sorted(fortes or armes, key=lambda r: (r["piece"], r["nouveau"]["id"])))
+    depart["nouveau"], choix["nouveau"] = choix["nouveau"], depart["nouveau"]
+    return depart["nouveau"]["id"]
 
 
 def verifier(resultat):
@@ -227,12 +258,13 @@ def tirer_graine():
 
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
              dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None,
-             armes_choisies=None, objets_visibles=True):
+             armes_choisies=None, objets_visibles=True, arme_depart=False):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
     Renvoie True si tout s'est bien passé. langue : langue des messages et du spoiler (textes.py).
     dire_spoiler : si donné, reçoit le spoiler complet (sinon il passe par dire).
     armes_choisies : ids des armes à mélanger avec armes_aleatoires (None = toutes celles connues).
-    objets_visibles : la DLL remplace aussi les objets posés (modèle par terre et aperçu) avant ramassage."""
+    objets_visibles : la DLL remplace aussi les objets posés (modèle par terre et aperçu) avant ramassage.
+    arme_depart : avec armes_aleatoires, une arme est toujours placée au pistolet du hall (106)."""
     if not Path(fichier).exists():
         dire(tr("gen_donnees", langue, fichier=fichier))
         return False
@@ -249,13 +281,16 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
                 difficulte=tr(f"diff_{difficulte}", langue)))
         return False
     resultat = generer(emplacements, graine, ids_libres)
+    if arme_depart and armes_aleatoires:
+        garantir_arme_depart(resultat, graine, ids_armes)
     verifier(resultat)
 
     sortie = {
         "version_jeu": {"taille_bhd_exe": 9640360,
                         "sha256": "39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A"},
         "personnage": personnage, "difficulte": difficulte,
-        "graine": graine, "options": {"armes_aleatoires": armes_aleatoires, "objets_visibles": bool(objets_visibles)},
+        "graine": graine, "options": {"armes_aleatoires": armes_aleatoires, "objets_visibles": bool(objets_visibles),
+                                      "arme_depart": bool(arme_depart and armes_aleatoires)},
         "remplacements": resultat,
     }
     (sortie_dir / f"{nom}.json").write_text(json.dumps(sortie, indent=1, ensure_ascii=False), encoding="utf-8")

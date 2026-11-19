@@ -995,7 +995,9 @@ static void releve_piece(DWORD piece)
         if (!copier(r.adr[k], o, sizeof o) || !est_objet_reel(o)) continue;
         if (nb_evts >= 0 && !dans_liste(r.adr[k], evts, nb_evts)) { fantomes++; continue; }
         reels++;
-        if (deja_note(empreinte_cle(piece, &o[0x10 / 4]))) continue;
+        /* + id : plusieurs objets peuvent partager une zone (ex. les 3 symboles de la même tombe, 312). Pas le
+         * n° d'objet (+0x3C) : il change quand on ramasse d'autres objets de la pièce. */
+        if (deja_note(empreinte_cle(piece, &o[0x10 / 4]) ^ ((o[0x34 / 4] >> 16) * 0x9E3779B1u))) continue;
         nouveaux++;
         journal("Releve auto\tpiece=%X\tid=%u\tqte=%u\tnum=%u\tobj=%X\tvaleurs=%X:%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X",
                 piece, o[0x34 / 4] >> 16, o[0x34 / 4] & 0xFFFF, o[0x3C / 4], o[0x30 / 4] >> 16, piece,
@@ -1005,6 +1007,28 @@ static void releve_piece(DWORD piece)
             nb_evts < 0 ? ", liste des evenements illisible" :
             fantomes ? ", fantome(s) ecarte(s)" : "", (unsigned long)(GetTickCount() - debut));
     if (fantomes) journal("Releve piece %X : %d objet(s) d'une autre piece ignore(s).", piece, fantomes);
+}
+
+/* Personnage et difficulté de la partie, pour que l'import des relevés les reconnaisse seul (19/11/2026).
+ * Repérés dans le code du jeu : [partie]+0x5110 décide si les vieilles clés (Chris seulement) sont placées
+ * (bhd.exe+81A44 : valeur 1 et id 0x2C → pas de vieille clé) → 0 = Chris, 1 = Jill (hypothèse) ;
+ * [partie]+0x24 = 3 double les rubans encreurs (bhd.exe+5130C) → sans doute la difficulté. On note aussi les
+ * valeurs voisines, le temps de confirmer. Une ligne « Partie » à chaque changement de ces valeurs. */
+static void noter_partie(void)
+{
+    static DWORD derniere[6] = { 0xFFFFFFFF };
+    DWORD p, v[6];
+    static const DWORD decalages[6] = { 0x20, 0x24, 0x28, 0x510C, 0x5110, 0x5114 };
+    int i;
+    if (!lisible((void *)ADR_PTR_PARTIE, 4, 0)) return;
+    p = *(DWORD *)ADR_PTR_PARTIE;
+    if (!p || !lisible((void *)(p + 0x20), 0x10, 0) || !lisible((void *)(p + 0x510C), 0x0C, 0)) return;
+    for (i = 0; i < 6; i++) v[i] = *(DWORD *)(p + decalages[i]);
+    if (memcmp(v, derniere, sizeof v) == 0) return;
+    memcpy(derniere, v, sizeof v);
+    journal("Partie\tperso=%lu\tdiff=%lu\tbrut=+20:%08lX +24:%08lX +28:%08lX +510C:%08lX +5110:%08lX +5114:%08lX",
+            (unsigned long)v[4], (unsigned long)v[1], (unsigned long)v[0], (unsigned long)v[1], (unsigned long)v[2],
+            (unsigned long)v[3], (unsigned long)v[4], (unsigned long)v[5]);
 }
 
 /* Appelée régulièrement par le thread de surveillance (modes diagnostic et relevé). */
@@ -1024,6 +1048,7 @@ static void diagnostic_periodique(void)
     /* pièce stable depuis 1,5 s et différente de la dernière traitée */
     if (piece != derniere_piece && GetTickCount() - depuis >= 1500) {
         derniere_piece = piece;
+        noter_partie();
         if (g_releve) releve_piece(piece);
         if (g_diagnostic) scanner_piece(piece);
     }
@@ -1226,7 +1251,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Randomizer RE HD v0.8.8 : demarrage");
+    journal("---- Randomizer RE HD v0.8.11 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */

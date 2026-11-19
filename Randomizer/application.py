@@ -23,7 +23,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.8.8"
+VERSION = "0.8.9"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/RE-HD-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
@@ -490,6 +490,7 @@ class Application(tk.Tk):
         self.armes = tk.BooleanVar(value=False)
         self.visibles = tk.BooleanVar(value=True)              # objets visibles par terre et dans l'aperçu
         # une case par arme de base (cochées par défaut, sauf celles pas encore relevées) ; visibles seulement avec « Armes aléatoires »
+        self.arme_depart = tk.BooleanVar(value=True)           # une arme toujours au pistolet du hall
         self.armes_cochees = {cle: tk.BooleanVar(value=id_arme is not None) for cle, id_arme, _ in gen.ARMES}
         self.cles = tk.BooleanVar(value=False)
         self.sans_logique = tk.BooleanVar(value=False)         # option à venir (grisée) : clés sans logique
@@ -734,6 +735,10 @@ class Application(tk.Tk):
             case = ttk.Checkbutton(self.liste_armes, text=texte, variable=self.armes_cochees[cle])
             case.pack(anchor="w")
             self.cases_armes[cle] = (case, id_arme, perso)
+        ttk.Checkbutton(self.liste_armes, text=self.t("arme_depart"), variable=self.arme_depart).pack(
+            anchor="w", pady=(8, 0))
+        ttk.Label(self.liste_armes, text=self.t("note_arme_depart"), style="Note.TLabel", wraplength=250,
+                  justify="left").pack(anchor="w", padx=(27, 0))
         self.afficher_liste_armes()
         ttk.Checkbutton(o, text=self.t("objets_visibles"), variable=self.visibles).pack(anchor="w", pady=(6, 0))
         ttk.Label(o, text=self.t("note_objets_visibles"), style="Note.TLabel", wraplength=280,
@@ -1222,7 +1227,7 @@ class Application(tk.Tk):
                                   installer, self.dossier_jeu.get() or None, messages.append,
                                   personnage=self.personnage.get(), difficulte=self.difficulte.get(),
                                   langue=langue, dire_spoiler=spoiler.append, armes_choisies=armes,
-                                  objets_visibles=self.visibles.get())
+                                  objets_visibles=self.visibles.get(), arme_depart=self.arme_depart.get())
             except Exception as e:  # on affiche l'erreur plutôt que de fermer l'application
                 messages.append(textes.tr("erreur", langue, e=e))
                 ok = False

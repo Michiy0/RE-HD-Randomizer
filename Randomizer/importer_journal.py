@@ -43,6 +43,9 @@ MOTIF_QTE = re.compile(r"\bqte=(\d+)")
 MOTIF_HEURE = re.compile(r"^(\d{2}:\d{2}:\d{2})")
 MOTIF_NUM = re.compile(r"\bnum=(\d+)")
 MOTIF_VISITE = re.compile(r"Releve piece ([0-9A-Fa-f]+) : (\d+) objet")
+# DLL v0.8.9+ : « Partie  perso=N  diff=N » (valeurs du jeu ; correspondance avec Chris/Jill et les difficultés
+# à confirmer avant de s'en servir pour choisir le scénario tout seul)
+MOTIF_PARTIE = re.compile(r"\tPartie\tperso=(\d+)\tdiff=(\d+)")
 MOTIFS_EMPREINTE = (
     re.compile(rf"valeurs=[0-9A-Fa-f]+:((?:{HEX8},){{7}}{HEX8})"),     # DLL et appliquer_seed.lua
     re.compile(rf"brut10-2C=((?:{HEX8}\s+){{7}}{HEX8})"),               # journal_objets.lua
@@ -94,14 +97,20 @@ def scenario_ligne(valeurs, col_perso, col_diff):
 
 
 def deja_connus(ws):
-    connus = set()
+    """{(pièce, empreinte, perso, difficulté): {ids des objets connus à cette zone}}.
+    Plusieurs objets peuvent partager une même zone (ex. les 3 symboles de la même tombe, 312) : on les
+    distingue par leur ID. (Pas par le « n° d'objet » num : il change quand on ramasse d'autres objets de la
+    pièce, constaté le 19/11/2026 avec le spray de l'abri de jardin 11B, n° 2 puis n° 1.)"""
+    connus = {}
     for ligne in ws.iter_rows(min_row=2, values_only=True):
         ligne = tuple(ligne) + (None,) * 14
         piece, empreinte = ligne[COL["piece"] - 1], ligne[COL["empreinte"] - 1]
         m = MOTIF_EMPREINTE_TABLEUR.search(str(empreinte or ""))
         if piece and m:
-            connus.add((str(piece).lower(), tuple(v.upper() for v in m.group(1).split()))
-                       + scenario_ligne(ligne, COL["personnage"], COL["difficulte"]))
+            cle = ((str(piece).lower(), tuple(v.upper() for v in m.group(1).split()))
+                   + scenario_ligne(ligne, COL["personnage"], COL["difficulte"]))
+            ident = ligne[COL["ident"] - 1]
+            connus.setdefault(cle, set()).add(int(ident) if isinstance(ident, (int, float)) else None)
     return connus
 
 
@@ -171,16 +180,27 @@ def main():
         directs += d
         for v in vis:                        # une pièce revisitée : on garde le plus grand nombre d'objets
             visites[v["piece"]] = max(visites.get(v["piece"], 0), v["objets"])
+        # ids vus EN MÊME TEMPS à une même zone (même relevé automatique : même heure, même pièce)
+        ensemble = {}
+        for r in releves:
+            if r["auto"]:
+                ensemble.setdefault((r["heure"], r["piece"], tuple(r["empreinte"])), set()).add(r["id"])
         for r in releves:
             cle = (r["piece"], tuple(r["empreinte"])) + scenario
-            if cle in connus:
-                doublons += 1
-                continue
+            ids = connus.get(cle)
+            # Zone déjà connue : un AUTRE id n'est un nouvel objet que s'il est vu en même temps qu'un id déjà
+            # connu à cette zone (ex. les 3 symboles d'une tombe, 312). Sinon c'est le même emplacement qui a
+            # changé d'objet (ex. le fusil du salon échangé contre le fusil cassé, 116) : doublon.
+            if ids is not None:
+                vus = ensemble.get((r["heure"], r["piece"], tuple(r["empreinte"])), set()) if r["auto"] else set()
+                if r["id"] in ids or ids == {None} or not (vus - {r["id"]}) & ids:
+                    doublons += 1
+                    continue
             autre = piece_de_zone.get(cle[1:])
             if autre and autre != r["piece"]:
                 fantomes.append((r, autre))
                 continue
-            connus.add(cle)
+            connus.setdefault(cle, set()).add(r["id"])
             piece_de_zone[cle[1:]] = r["piece"]
             nouveaux.append(r)
 
@@ -199,6 +219,14 @@ def main():
             elif args.nouvelle_partie and pr.cell(r, PR["nouvelle"]).value != "oui":
                 pieces_completees.append(piece)
 
+    vus = set()
+    for j in args.journaux:
+        for ligne in Path(j).read_text(encoding="utf-8", errors="replace").splitlines():
+            m = MOTIF_PARTIE.search(ligne)
+            if m:
+                vus.add((int(m.group(1)), int(m.group(2))))
+    if vus:
+        print("Valeurs du jeu notées par la DLL (perso, diff) : " + ", ".join(f"{a}, {b}" for a, b in sorted(vus)))
     print(f"Scénario : {args.personnage} / {args.difficulte}"
           + (" (nouvelle partie)" if args.nouvelle_partie else " (partie déjà commencée)"))
     print(f"{len(nouveaux)} nouvel(s) emplacement(s), {doublons} déjà connu(s) ou en double"
