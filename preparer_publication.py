@@ -58,6 +58,7 @@ FICHIERS = {
     "images/appli_generer_en.png": "images/appli_generer_en.png",
     "images/appli_installation_en.png": "images/appli_installation_en.png",
     "images/appli_spoiler_en.png": "images/appli_spoiler_en.png",
+    "images/avant_apres.gif": "images/avant_apres.gif",
     "Randomizer/creer_icone.py": "Randomizer/creer_icone.py",
     "Randomizer/construire_exe.bat": "Randomizer/construire_exe.bat",
     "Randomizer/construire_linux.sh": "Randomizer/construire_linux.sh",

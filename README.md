@@ -31,6 +31,8 @@ or strategies.
 
 ## Screenshots
 
+<p align="center"><img src="images/avant_apres.gif" alt="Same room in the original game and with the randomizer: the dagger on the table becomes a green herb" width="720"><br><sub>Same room, original game vs randomizer: the dagger on the table is now a green herb, visible right away</sub></p>
+
 <table>
 <tr>
 <td align="center"><img src="images/appli_generer_en.png" alt="Generate a seed: options and weapon choice" width="420"><br><sub>Generate a seed: options and weapon choice</sub></td>
@@ -325,6 +327,8 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
   le randomizer multi-jeux (voir [Archipelago](#archipelago-à-venir)).
 
 ## Aperçu
+
+<p align="center"><img src="images/avant_apres.gif" alt="La même pièce dans le jeu d'origine et avec le randomizer : le poignard sur la table devient une herbe verte" width="720"><br><sub>La même pièce, jeu d'origine et randomizer : le poignard sur la table est devenu une herbe verte, visible tout de suite</sub></p>
 
 <table>
 <tr>
