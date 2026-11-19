@@ -25,7 +25,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
@@ -438,6 +438,9 @@ def appliquer_style(racine):
     s.configure("Accent.TButton", background=c["accent"], foreground="#ffffff", bordercolor=c["accent"],
                 lightcolor=c["accent"], darkcolor=c["accent"], font=(POLICE, 11, "bold"), padding=(26, 10))
     s.configure("Maj.Accent.TButton", font=(POLICE, 10, "bold"), padding=(12, 5))   # bouton de mise à jour (en-tête)
+    # boutons des fenêtres d'alerte : même police et même marge pour le bouton rouge et le bouton gris
+    s.configure("Dialogue.Accent.TButton", font=(POLICE, 10, "bold"), padding=(16, 8))
+    s.configure("Dialogue.TButton", font=(POLICE, 10, "bold"), padding=(16, 8))
     s.map("Accent.TButton",
           background=[("disabled", c["champ"]), ("pressed", c["accent_presse"]), ("active", c["accent_survol"])],
           lightcolor=[("active", c["accent_survol"])], darkcolor=[("active", c["accent_survol"])],
@@ -1332,6 +1335,8 @@ class Application(tk.Tk):
         self.case_releve = ttk.Checkbutton(r, text=self.t("releve_case"),
                                            variable=self.releve, command=self.basculer_releve)
         self.case_releve.pack(anchor="w", pady=(10, 2))
+        ttk.Label(r, text=self.t("releve_prevention"), style="Alerte.TLabel", wraplength=610,
+                  justify="left").pack(anchor="w", padx=(27, 0), pady=(0, 6))
         for etape in ("etape1", "etape2", "etape3", "etape4"):
             ttk.Label(r, text=self.t(etape), style="Note.TLabel", wraplength=610,
                       justify="left").pack(anchor="w", padx=(27, 0), pady=1)
@@ -1544,6 +1549,52 @@ class Application(tk.Tk):
         self.onglets.tab(self.page_spoiler, state="normal" if spoiler else "disabled")
         self.bouton_suivant.state(["!disabled"] if dll_prete else ["disabled"])
 
+    def alerte_releve(self):
+        """Fenêtre d'alerte : objets visibles désactivés par le mode relevé. Renvoie « desactiver » ou « garder »."""
+        c = COULEURS
+        choix = {"valeur": "garder"}
+        f = tk.Toplevel(self)
+        f.title(self.t("alerte_releve_titre"))
+        f.configure(bg=c["carte"])
+        f.resizable(False, False)
+        f.transient(self)
+        if getattr(self, "_logo_entete", None):
+            try:
+                f.iconphoto(False, self._logo_entete)
+            except tk.TclError:
+                pass
+        cadre = tk.Frame(f, bg=c["carte"], padx=24, pady=20)
+        cadre.pack(fill="both", expand=True)
+        tk.Label(cadre, text="⚠", bg=c["carte"], fg="#e8a33a", font=(POLICE, 26)).grid(row=0, column=0, rowspan=2,
+                                                                                    sticky="n", padx=(0, 16))
+        tk.Label(cadre, text=self.t("alerte_releve_titre"), bg=c["carte"], fg=c["texte"],
+                 font=(POLICE, 12, "bold")).grid(row=0, column=1, sticky="w")
+        tk.Label(cadre, text=self.t("alerte_releve"), bg=c["carte"], fg=c["texte"], font=(POLICE, 10),
+                 wraplength=420, justify="left").grid(row=1, column=1, sticky="w", pady=(6, 16))
+        boutons = tk.Frame(cadre, bg=c["carte"])
+        boutons.grid(row=2, column=0, columnspan=2, sticky="e")
+
+        def fermer(valeur):
+            choix["valeur"] = valeur
+            f.destroy()
+        # deux boutons de même taille (colonnes « uniform »)
+        boutons.columnconfigure((0, 1), uniform="bouton")
+        ttk.Button(boutons, text=self.t("alerte_releve_desactiver"), style="Dialogue.Accent.TButton",
+                   command=lambda: fermer("desactiver")).grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        ttk.Button(boutons, text=self.t("alerte_releve_garder"), style="Dialogue.TButton",
+                   command=lambda: fermer("garder")).grid(row=0, column=1, sticky="ew")
+        f.protocol("WM_DELETE_WINDOW", lambda: fermer("garder"))
+        f.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - f.winfo_reqwidth()) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - f.winfo_reqheight()) // 3
+        f.geometry(f"+{max(0, x)}+{max(0, y)}")
+        if SOUS_WINDOWS:
+            barre_titre_sombre(f)
+        f.grab_set()
+        f.focus_set()
+        self.wait_window(f)
+        return choix["valeur"]
+
     def basculer_releve(self):
         d = Path(self.dossier_jeu.get())
         actif = self.releve.get()
@@ -1635,6 +1686,12 @@ class Application(tk.Tk):
         if installer and not (Path(self.dossier_jeu.get()) / "bhd.exe").exists():
             messagebox.showwarning(TITRE, self.t("dossier_introuvable"))
             return
+
+        if installer and self.visibles.get() and self.releve.get():
+            if self.alerte_releve() == "desactiver":
+                self.releve.set(False)
+                self.basculer_releve()
+                self.after(50, lambda: self.ecrire(self.t("alerte_releve_fait")))
 
         self.bouton_generer.state(["disabled"])
         self.ecrire(self.t("generation"), effacer=True)

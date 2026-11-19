@@ -529,13 +529,62 @@ T = {
                     "Activar el modo registro (en el próximo inicio del juego)",
                     "Ativar o modo levantamento (no próximo início do jogo)",
                     "Включить режим сбора (при следующем запуске игры)", "启用记录模式（下次启动游戏时生效）"),
-    "etape1": ("1.  Installe la DLL (onglet Randomizer) et coche la case ci-dessus.",
-               "1.  Install the DLL (Randomizer tab) and tick the box above.",
-               "1.  DLL をインストールし（ランダマイザータブ）、上のボックスにチェックを入れます。",
-               "1.  Instala la DLL (pestaña Randomizer) y marca la casilla de arriba.",
-               "1.  Instale a DLL (aba Randomizer) e marque a caixa acima.",
-               "1.  Установите DLL (вкладка «Рандомайзер») и отметьте флажок выше.",
-               "1.  安装 DLL（随机器标签页）并勾选上方的复选框。"),
+    "etape1": ("1.  Installe la DLL (onglet Installation) et coche la case ci-dessus.",
+               "1.  Install the DLL (Installation tab) and tick the box above.",
+               "1.  DLL をインストールし（インストールタブ）、上のボックスにチェックを入れます。",
+               "1.  Instala la DLL (pestaña Instalación) y marca la casilla de arriba.",
+               "1.  Instale a DLL (aba Instalação) e marque a caixa acima.",
+               "1.  Установите DLL (вкладка «Установка») и отметьте флажок выше.",
+               "1.  安装 DLL（安装标签页）并勾选上方的复选框。"),
+    "releve_prevention": (
+        "⚠  Pendant le mode relevé, les objets visibles par terre et leur aperçu sont désactivés. Pour jouer avec "
+        "une seed, décoche cette case puis relance le jeu. Pour relever, supprime d'abord la seed installée.",
+        "⚠  While survey mode is on, items visible on the ground and their preview are turned off. To play with a "
+        "seed, untick this box and restart the game. To survey, remove the installed seed first.",
+        "⚠  調査モード中は、地面に見えるアイテムとそのプレビューが無効になります。シードで遊ぶときは、このボックスの"
+        "チェックを外してゲームを再起動してください。調査するときは、先にインストール済みのシードを削除してください。",
+        "⚠  Con el modo registro activo, los objetos visibles en el suelo y su vista previa se desactivan. Para "
+        "jugar con una seed, desmarca esta casilla y reinicia el juego. Para registrar, borra antes la seed instalada.",
+        "⚠  Com o modo levantamento ativo, os itens visíveis no chão e a prévia ficam desativados. Para jogar com "
+        "uma seed, desmarque esta caixa e reinicie o jogo. Para fazer o levantamento, remova antes a seed instalada.",
+        "⚠  В режиме сбора данных предметы на полу и их предпросмотр отключены. Чтобы играть с сидом, снимите "
+        "этот флажок и перезапустите игру. Для сбора данных сначала удалите установленный сид.",
+        "⚠  记录模式开启时，地上可见的物品及其预览会被关闭。要用种子游玩，请取消勾选此框并重启游戏。"
+        "要进行记录，请先删除已安装的种子。"),
+    "alerte_releve_titre": ("Mode relevé actif", "Survey mode is on", "調査モードが有効です", "Modo registro activo",
+                            "Modo levantamento ativo", "Режим сбора данных включён", "记录模式已开启"),
+    "alerte_releve": (
+        "Les objets visibles par terre (et leur aperçu avant ramassage) sont désactivés car le mode relevé est "
+        "actif. Les objets seront seulement remplacés au moment du ramassage.\n\nDésactive le mode relevé pour "
+        "les voir, puis relance le jeu.",
+        "Items visible on the ground (and their preview before pickup) are turned off because survey mode is on. "
+        "Items will only be replaced when you pick them up.\n\nTurn survey mode off to see them, then restart "
+        "the game.",
+        "調査モードが有効なため、地面に見えるアイテム（拾う前のプレビューも）は無効です。アイテムは拾ったときにだけ"
+        "入れ替わります。\n\n表示するには調査モードを無効にして、ゲームを再起動してください。",
+        "Los objetos visibles en el suelo (y su vista previa) están desactivados porque el modo registro está "
+        "activo. Los objetos solo se sustituirán al recogerlos.\n\nDesactiva el modo registro para verlos y "
+        "reinicia el juego.",
+        "Os itens visíveis no chão (e a prévia antes de pegar) estão desativados porque o modo levantamento está "
+        "ativo. Os itens só serão trocados ao pegá-los.\n\nDesative o modo levantamento para vê-los e reinicie "
+        "o jogo.",
+        "Предметы на полу (и их предпросмотр) отключены, потому что включён режим сбора данных. Предметы будут "
+        "заменяться только при подборе.\n\nОтключите режим сбора данных, чтобы их видеть, и перезапустите игру.",
+        "由于记录模式已开启，地上可见的物品（及拾取前的预览）被关闭，物品只会在拾取时替换。\n\n"
+        "请关闭记录模式以显示它们，然后重启游戏。"),
+    "alerte_releve_desactiver": ("Désactiver le mode relevé", "Turn survey mode off", "調査モードを無効にする",
+                                 "Desactivar el modo registro", "Desativar o modo levantamento",
+                                 "Отключить режим сбора данных", "关闭记录模式"),
+    "alerte_releve_garder": ("Garder le mode relevé", "Keep survey mode", "調査モードのままにする",
+                             "Mantener el modo registro", "Manter o modo levantamento",
+                             "Оставить режим сбора данных", "保持记录模式"),
+    "alerte_releve_fait": ("Mode relevé désactivé : relance le jeu pour voir les objets par terre.",
+                           "Survey mode turned off: restart the game to see the items on the ground.",
+                           "調査モードを無効にしました。地面のアイテムを見るにはゲームを再起動してください。",
+                           "Modo registro desactivado: reinicia el juego para ver los objetos en el suelo.",
+                           "Modo levantamento desativado: reinicie o jogo para ver os itens no chão.",
+                           "Режим сбора данных отключён: перезапустите игру, чтобы видеть предметы на полу.",
+                           "记录模式已关闭：重启游戏即可看到地上的物品。"),
     "etape2": ("2.  Lance une NOUVELLE partie : les objets déjà ramassés n'existent plus en mémoire.",
                "2.  Start a NEW game: items already picked up no longer exist in memory.",
                "2.  ニューゲームで始めます：拾ったアイテムはメモリから消えています。",
