@@ -53,7 +53,7 @@ or strategies.
 `39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A`). The app checks it; on any other
 version the randomizer stays inactive and the game is untouched.
 
-### Survey progress
+## Survey progress
 
 Percentage of rooms surveyed in a **new game**, for each character and difficulty (see
 [Help the project](#help-the-project)). Updated with every version.
@@ -156,7 +156,11 @@ Options marked “coming soon” (keys, enemies, bonus weapons, other weapons…
 - **Another mod that installs an `xinput1_4.dll`**: incompatible. The app detects it and never touches it.
 - **Cheat Engine**: do not run `appliquer_seed.lua` at the same time (same breakpoint).
 
-### Recommended mod for playing: Resident Evil Fusion Fix
+## Recommended mods
+
+Optional mods that make the game nicer to play with the randomizer. None of them is required.
+
+### Resident Evil Fusion Fix
 
 [Resident Evil Fusion Fix](https://github.com/ThirteenAG/WidescreenFixesPack/releases/tag/re1) (ThirteenAG)
 makes the game more comfortable: every resolution your screen supports, borderless window, door animation
@@ -267,7 +271,7 @@ GPLv3 — see [LICENSE](LICENSE).
 
 ---
 
-## Français
+# Français
 
 **[⬇ Télécharger la dernière version](https://github.com/Michiy0/RE-HD-Randomizer/releases)** ·
 [English](#randomizer--resident-evil-hd-remaster-pc--steam) · [Signaler un problème](https://github.com/Michiy0/RE-HD-Randomizer/issues)
@@ -282,7 +286,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 > Projet de fan, **non officiel**, sans lien avec Capcom. Aucun fichier du jeu n'est inclus : il faut
 > posséder [Resident Evil HD Remaster sur Steam](https://store.steampowered.com/app/304240/).
 
-### En bref
+## En bref
 
 - **Les objets changent de place** : munitions, herbes, rubans encreurs, poignards… Les clés et objets de
   quête restent à leur place, la partie reste toujours finissable.
@@ -298,7 +302,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
 
-### Aperçu
+## Aperçu
 
 <table>
 <tr>
@@ -310,7 +314,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-### État : version 0.8.9 (test)
+## État : version 0.8.9 (test)
 
 | Pris en charge | À venir |
 |---|---|
@@ -324,7 +328,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 `39B840663E4B1A6835C60CBD176E4EE6C21B9197FC2C2DD733F2A7C36A0B429A`). L'application le vérifie ; sur une
 autre version, le randomizer se met en veille et le jeu reste intact.
 
-### Avancement des relevés
+## Avancement des relevés
 
 Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage et difficulté
 (voir [Aider le projet](#aider-le-projet)). Mis à jour à chaque version.
@@ -354,9 +358,9 @@ Armes bonus : 0/2 identifiées. Mis à jour le 19/11/2026.
 
 <!-- progression:fin -->
 
-### Installation
+## Installation
 
-#### Windows
+### Windows
 
 1. Télécharge `RandomizerREHD-v…-windows.zip` dans les **[Releases](https://github.com/Michiy0/RE-HD-Randomizer/releases)**
    et extrais-le où tu veux.
@@ -368,7 +372,7 @@ Armes bonus : 0/2 identifiées. Mis à jour le 19/11/2026.
 
 Pour changer de seed : en générer une nouvelle, puis relancer le jeu.
 
-#### Mises à jour
+### Mises à jour
 
 Depuis la **v0.7**, l'application vérifie au démarrage s'il existe une nouvelle version : un bouton
 **Mise à jour** apparaît alors en haut, à côté du choix de langue. Un clic la télécharge, la vérifie,
@@ -382,7 +386,7 @@ Si tu as une version plus ancienne (0.6.2 ou avant), télécharge à la main une
 > peuvent aussi signaler la DLL par erreur : elle utilise un point d'arrêt matériel (comme Cheat Engine)
 > pour repérer l'objet ramassé. Tout le code source est dans ce dépôt.
 
-#### Steam Deck / Linux
+### Steam Deck / Linux
 
 L'application existe en version **Linux native** (pas besoin de Proton pour elle) ; le jeu, lui, tourne
 toujours avec Proton.
@@ -404,12 +408,12 @@ L'application peut aussi être ajoutée à Steam comme **jeu non-Steam** pour l'
 > **Testé et confirmé sur Steam Deck** : la DLL fonctionne dans le jeu sous Proton (jeu installé sur la
 > carte SD). En cas de souci, le bouton **Journal du jeu** montre ce qui s'est passé.
 
-#### Revenir au jeu d'origine
+### Revenir au jeu d'origine
 
 Dans l'application : **Désinstaller la DLL** (sur Steam Deck, retire aussi l'option de lancement).
 « Supprimer la seed installée » retire seulement la seed : sans seed, la DLL ne change rien au jeu.
 
-### Utilisation
+## Utilisation
 
 L'application a cinq onglets, et un sélecteur de langue en haut à droite (« Automatique » = langue du
 système, anglais sinon).
@@ -430,14 +434,18 @@ système, anglais sinon).
 
 Les options marquées « à venir » (clés, ennemis, armes bonus, autres armes…) sont visibles mais grisées.
 
-#### Compatibilité
+### Compatibilité
 
 - **BhdTool** : compatible (il utilise `dinput8.dll`, le randomizer `xinput1_4.dll`).
 - **Autre mod qui installe un `xinput1_4.dll`** : incompatible. L'application le détecte et n'y touche
   jamais.
 - **Cheat Engine** : ne pas lancer `appliquer_seed.lua` en même temps (même point d'arrêt).
 
-#### Mod recommandé pour jouer : Resident Evil Fusion Fix
+## Mods recommandés
+
+Des mods facultatifs qui rendent le jeu plus agréable avec le randomizer. Aucun n'est obligatoire.
+
+### Resident Evil Fusion Fix
 
 [Resident Evil Fusion Fix](https://github.com/ThirteenAG/WidescreenFixesPack/releases/tag/re1) (ThirteenAG)
 améliore le confort de jeu : toutes les résolutions de l'écran, fenêtre sans bordure, saut des animations de
@@ -450,7 +458,7 @@ Installation : extraire l'archive `ResidentEvil.FusionFix.zip` dans le dossier d
   donc conseillé pour **jouer** ; pour **les relevés**, BhdTool reste plus pratique (voir *Aider le projet*).
 - Sur Steam Deck, coche *Ajouter dinput8.dll* sous l'option de lancement de l'application.
 
-### Aider le projet
+## Aider le projet
 
 Le randomizer ne mélange que les objets déjà **relevés**. Tout le monde peut aider en jouant :
 
@@ -473,7 +481,7 @@ Sur Steam Deck, coche aussi *Ajouter dinput8.dll* sous l'option de lancement de 
 Les traductions ont été faites pour le projet : si tu parles une des 7 langues et vois une erreur,
 signale-la aussi (les textes sont dans `Randomizer/textes.py`).
 
-### Signaler un problème
+## Signaler un problème
 
 Ouvre une [issue](https://github.com/Michiy0/RE-HD-Randomizer/issues) en joignant `randomizer_journal.txt`
 (bouton **Journal du jeu**), avec la graine, les options, ta plateforme (Windows ou Steam Deck) et ce qui
@@ -481,9 +489,9 @@ s'est passé.
 
 ---
 
-### Pour les développeurs
+## Pour les développeurs
 
-#### Comment ça marche
+### Comment ça marche
 
 - **L'application** (`Randomizer/application.py`, Python + Tk) tire une seed à partir du tableur
   `donnees_randomizer_RE1.xlsx` (emplacements relevés en jeu) et l'écrit dans le dossier du jeu sous le
@@ -499,7 +507,7 @@ s'est passé.
 - `bhd.exe` est protégé par SteamStub (code chiffré sur le disque) : la DLL ne modifie jamais le code et
   se met en veille sur une autre version du jeu.
 
-#### Contenu du dépôt
+### Contenu du dépôt
 
 ```
 donnees_randomizer_RE1.xlsx   données : pièces, objets, emplacements, pièces relevées, bonus
@@ -517,7 +525,7 @@ outils/cheat_engine/          anciens scripts Cheat Engine (relevés manuels)
 preparer_publication.py       prépare le dépôt, le zip Windows et l'archive Linux
 ```
 
-#### Construire
+### Construire
 
 - **Windows** — Python 3 (`pip install openpyxl pyinstaller`) et GCC 32 bits de MSYS2
   (`pacman -S mingw-w64-i686-gcc`) :
@@ -537,7 +545,7 @@ preparer_publication.py       prépare le dépôt, le zip Windows et l'archive L
   `python Randomizer/importer_journal.py journal.txt --personnage Chris --difficulte Normal --nouvelle-partie --ecrire`
   (sans `--nouvelle-partie` si la partie était déjà commencée : les pièces comptent alors comme visitées).
 
-### Crédits
+## Crédits
 
 - **Auteur** : **Jojo / Michiyo** (Delage Jordan) — [profil GitHub](https://github.com/Michiy0).
 - **Tests et relevés des objets** : **Nico** (De Oliveira Gomes Nicolas) — « Number One Chris Fan » 👊
@@ -545,6 +553,6 @@ preparer_publication.py       prépare le dépôt, le zip Windows et l'archive L
   l'outil aide beaucoup pour les relevés (voir [Aider le projet](#aider-le-projet)).
 - Inspiré des randomizers de la communauté (BioRand, ancien randomizer de Benn Powell).
 
-### Licence
+## Licence
 
 GPLv3 — voir [LICENSE](LICENSE).
