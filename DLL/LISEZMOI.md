@@ -33,6 +33,15 @@ sans rien ramasser. Chaque objet n'est noté qu'une fois par lancement. Petite s
 l'entrée des pièces. Les objets déjà ramassés n'existent plus : relevé complet = nouvelle partie.
 Le journal s'importe ensuite avec `importer_journal.py`.
 
+## Objets examinés (v0.9.3)
+
+Certains objets ne sont pas posés dans la pièce : le jeu les donne quand on examine quelque chose (joyaux des têtes
+de trophées, document sur le corps de Wesker…). La DLL les intercepte en `bhd.exe+151284` (id en `[esi+0x624C]`,
+quantité en `[esi+0x6254]`) : en mémoire seulement, après le déchiffrement du jeu, le premier octet de l'instruction
+est remplacé par un point d'arrêt (INT3), seulement si les octets attendus sont là. Actif en mode relevé, en mode
+diagnostic ou si la seed contient des lignes `examen = pièce, ancien = id, id = nouvel id, qte = quantité`.
+`Examens=0` dans `randomizer.ini` le désactive. Lignes du journal : `Objet examine  piece=…  id=…  qte=…`.
+
 ## Mode diagnostic (pour les relevés)
 `Diagnostic=1` dans `randomizer.ini` : à chaque objet examiné ou ramassé (60 au plus par lancement), la
 DLL écrit dans `randomizer_diagnostic.txt` l'adresse de la structure de l'objet, sa position par rapport

@@ -23,7 +23,7 @@ or strategies.
 - **Nothing else to install**: a small DLL loads with the game and does the work. The game's code is never
   modified.
 - **Windows and Steam Deck**: a Windows app, and a native Linux app for the Steam Deck.
-- **7 languages**: English, French, Japanese, Spanish, Portuguese, Russian and Chinese (system language
+- **9 languages**: English, French, German, Italian, Japanese, Spanish, Portuguese, Russian and Chinese (system language
   by default).
 - **Community project**: every player can help survey the game's items with the built-in survey mode.
 - **Archipelago support coming**: the randomizer is being prepared for [Archipelago](https://archipelago.gg),
@@ -43,13 +43,13 @@ or strategies.
 </tr>
 </table>
 
-## Status: version 0.9.2 (test)
+## Status: version 0.9.3 (test)
 
 | Supported | Coming |
 |---|---|
-| Chris, Normal difficulty | Jill, other difficulties |
-| 124 placed-item locations: ammo (handgun and shotgun), green and red herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
-| **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items (with keys) |
+| Chris, Normal difficulty (whole game surveyed, laboratory included) | Jill, other difficulties |
+| 144 placed-item locations: ammo (handgun and shotgun), green and red herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
+| **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items and items obtained by examining something (trophy gems, fish hook…: already supported by the game DLL, name and preview included), with keys |
 | **Random weapons** option, with a choice of which weapons to shuffle (handgun, shotgun, assault shotgun) and a **guaranteed starting weapon** option | The other weapons (grenade launcher, flamethrower, magnums), random enemies |
 | **Fun** section: **bonus weapons** (unlimited Samurai Edge and rocket launcher, each replacing a random item) | — |
 | Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | **[Archipelago](#archipelago-coming-soon)** support |
@@ -87,7 +87,7 @@ Percentage of rooms surveyed in a **new game**, for each character and difficult
 |---|---|---|---|---|
 | Chris | Very Easy | 0/118 (0%) | 0 | 0 |
 | Chris | Easy | 0/118 (0%) | 0 | 0 |
-| Chris | Normal | 96/118 (81%) | 1 | 219 |
+| Chris | Normal | 117/118 (99%) | 1 | 260 |
 | Chris | Hard | 0/118 (0%) | 0 | 0 |
 | Chris | Real Survival | 0/118 (0%) | 0 | 0 |
 | Jill | Very Easy | 0/118 (0%) | 0 | 0 |
@@ -96,7 +96,7 @@ Percentage of rooms surveyed in a **new game**, for each character and difficult
 | Jill | Hard | 0/118 (0%) | 0 | 0 |
 | Jill | Real Survival | 0/118 (0%) | 0 | 0 |
 
-Bonus weapons: 2/2 identified. Updated 2026-11-19.
+Bonus weapons: 2/2 identified. Updated 2026-11-20.
 
 </details>
 
@@ -212,7 +212,7 @@ randomizer. In game, **F5** opens its menu:
 
 On Steam Deck, also tick *Also load dinput8.dll* under the app's launch option.
 
-Translations were made for the project: if you speak one of the 7 languages and spot a mistake, please
+Translations were made for the project: if you speak one of the 9 languages and spot a mistake, please
 report it too (texts are in `Randomizer/textes.py`).
 
 ## Reporting a problem
@@ -242,7 +242,7 @@ Open an [issue](https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer/
 donnees_randomizer_RE1.xlsx   data: rooms, items, locations, surveyed rooms, bonus
 DLL/                          the DLL (randomizer.c, xinput1_4.def) and its build scripts
 Randomizer/
-  application.py              the app (5 tabs, 7 languages)
+  application.py              the app (6 tabs, 9 languages)
   mise_a_jour.py              automatic update from the GitHub Releases
   noms_jeu.py                 official item names, read from the installed game's texts
   generateur_seed.py          seed generation (also command line)
@@ -316,7 +316,7 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 - **Rien d'autre à installer** : une petite DLL se charge avec le jeu et fait le travail. Le code du jeu n'est
   jamais modifié.
 - **Windows et Steam Deck** : application Windows, et application Linux native pour le Steam Deck.
-- **7 langues** : français, anglais, japonais, espagnol, portugais, russe et chinois (langue du système
+- **9 langues** : français, anglais, allemand, italien, japonais, espagnol, portugais, russe et chinois (langue du système
   par défaut).
 - **Projet communautaire** : chaque joueur peut aider à relever les objets du jeu, grâce à un mode relevé
   intégré.
@@ -337,13 +337,13 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.9.2 (test)
+## État : version 0.9.3 (test)
 
 | Pris en charge | À venir |
 |---|---|
-| Chris, difficulté Normal | Jill, autres difficultés |
-| 124 emplacements d'objets posés : munitions (pistolet et fusil), herbes vertes et rouges, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
-| **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles (avec les clés) |
+| Chris, difficulté Normal (tout le jeu relevé, laboratoire compris) | Jill, autres difficultés |
+| 144 emplacements d'objets posés : munitions (pistolet et fusil), herbes vertes et rouges, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
+| **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles et objets obtenus en examinant quelque chose (joyaux des trophées, hameçon… : déjà gérés par la DLL du jeu, nom et aperçu compris), avec les clés |
 | Option **armes aléatoires**, avec le choix des armes à mélanger (pistolet, fusil, fusil d'assaut) et option **arme garantie au départ** | Les autres armes (lance-grenades, lance-flammes, magnums), ennemis aléatoires |
 | Section **Fun** : **armes bonus** (Samurai Edge et lance-roquettes illimités, chacun à la place d'un objet au hasard) | — |
 | Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | Support d'**[Archipelago](#archipelago-à-venir)** |
@@ -382,7 +382,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 |---|---|---|---|---|
 | Chris | Très facile | 0/118 (0 %) | 0 | 0 |
 | Chris | Facile | 0/118 (0 %) | 0 | 0 |
-| Chris | Normal | 96/118 (81 %) | 1 | 219 |
+| Chris | Normal | 117/118 (99 %) | 1 | 260 |
 | Chris | Difficile | 0/118 (0 %) | 0 | 0 |
 | Chris | Real Survival | 0/118 (0 %) | 0 | 0 |
 | Jill | Très facile | 0/118 (0 %) | 0 | 0 |
@@ -391,7 +391,7 @@ Pourcentage de pièces relevées en **nouvelle partie** pour chaque personnage e
 | Jill | Difficile | 0/118 (0 %) | 0 | 0 |
 | Jill | Real Survival | 0/118 (0 %) | 0 | 0 |
 
-Armes bonus : 2/2 identifiées. Mis à jour le 19/11/2026.
+Armes bonus : 2/2 identifiées. Mis à jour le 20/11/2026.
 
 </details>
 
@@ -516,7 +516,7 @@ compatible avec le randomizer. En jeu, **F5** ouvre son menu :
 
 Sur Steam Deck, coche aussi *Ajouter dinput8.dll* sous l'option de lancement de l'application.
 
-Les traductions ont été faites pour le projet : si tu parles une des 7 langues et vois une erreur,
+Les traductions ont été faites pour le projet : si tu parles une des 9 langues et vois une erreur,
 signale-la aussi (les textes sont dans `Randomizer/textes.py`).
 
 ## Signaler un problème
@@ -551,7 +551,7 @@ s'est passé.
 donnees_randomizer_RE1.xlsx   données : pièces, objets, emplacements, pièces relevées, bonus
 DLL/                          la DLL (randomizer.c, xinput1_4.def) et ses scripts de compilation
 Randomizer/
-  application.py              l'application (5 onglets, 7 langues)
+  application.py              l'application (6 onglets, 9 langues)
   mise_a_jour.py              mise à jour automatique depuis les Releases GitHub
   noms_jeu.py                 noms officiels des objets, lus dans les textes du jeu installé
   generateur_seed.py          génération des seeds (aussi en ligne de commande)

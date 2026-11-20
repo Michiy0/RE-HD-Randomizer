@@ -60,6 +60,23 @@ typedef struct { DWORD piece, ancien, nouveau; BYTE ok; } Decor;
 static Decor g_decors[MAX_DECORS];
 static int   g_nb_decors;
 
+/* Objets « examinés » (donnés sans objet posé dans la pièce : joyaux des têtes de trophées, document sur le corps
+ * de Wesker…) : dans la pièce « examen », l'objet d'id « ancien » devient id / qte
+ * (lignes « examen = …, ancien = …, id = …, qte = … » de la seed, v0.9.3+). */
+#define MAX_EXAMENS 256
+typedef struct { DWORD piece, ancien, id, qte; } Examen;
+static Examen g_examens[MAX_EXAMENS];
+static int    g_nb_examens;
+
+/* Objets posés dans un mécanisme (ex. la capsule de carburant dans la machine de la 50F) : leur point de
+ * placement est caché dans le décor, seul le modèle d'origine dépasse. Le nouvel objet est remonté de « y »
+ * (lignes « decalage = pièce, ancien = id d'origine, y = … » de la seed, v0.9.3+). */
+#define MAX_DECALAGES 64
+typedef struct { DWORD piece, ancien; float y; } Decalage;
+static Decalage g_decalages[MAX_DECALAGES];
+static int      g_nb_decalages;
+static float    g_positions[MAX_DECALAGES][4];   /* copies de position remontées, données à la fonction de placement */
+
 static char  g_dossier[MAX_PATH];        /* dossier du jeu, avec la barre oblique finale */
 static char  g_journal[MAX_PATH];
 static CRITICAL_SECTION g_verrou_journal;
@@ -127,7 +144,26 @@ static int charger_seed(const char *chemin)
     if (!f) return 0;
     g_nb = 0;
     while (fgets(ligne, sizeof ligne, f)) {
-        if (strstr(ligne, "piece =")) {
+        if (strstr(ligne, "decalage =")) {
+            DWORD v[4];
+            if (lire_nombres(ligne, v, 4) == 3 && g_nb_decalages < MAX_DECALAGES) {
+                g_decalages[g_nb_decalages].piece = v[0];
+                g_decalages[g_nb_decalages].ancien = v[1];
+                g_decalages[g_nb_decalages++].y = (float)v[2];
+            } else {
+                journal("Ligne de seed ignoree (format inattendu) : %.200s", ligne);
+            }
+        } else if (strstr(ligne, "examen =")) {
+            DWORD v[5];
+            if (lire_nombres(ligne, v, 5) == 4 && g_nb_examens < MAX_EXAMENS) {
+                g_examens[g_nb_examens].piece = v[0];
+                g_examens[g_nb_examens].ancien = v[1];
+                g_examens[g_nb_examens].id = v[2];
+                g_examens[g_nb_examens++].qte = v[3];
+            } else {
+                journal("Ligne de seed ignoree (format inattendu) : %.200s", ligne);
+            }
+        } else if (strstr(ligne, "piece =")) {
             DWORD v[12];
             if (lire_nombres(ligne, v, 12) == 11 && g_nb < MAX_EMPLACEMENTS) {
                 Emplacement *e = &g_seed[g_nb++];
@@ -286,41 +322,74 @@ static int liste_contient(const DWORD *liste, int n, const char *nom)
     return 0;
 }
 
+/* Noms des modèles des objets examinés (v0.9.3) : sans eux, l'aperçu de « Prendre … ? » reste noir (test du
+ * 20/11/2026 : capsule de la 50F remplacée par des munitions pour pistolet). */
+static char g_noms_examens[MAX_EXAMENS][8];
+
+/* Modèle iNNNp de l'objet « id » : écrit son nom dans « nom » et renvoie 1 si le fichier existe. */
+static int modele_existe(DWORD id, char *nom, int taille)
+{
+    char chemin[MAX_PATH];
+    _snprintf(nom, taille, "i%03lup", (unsigned long)id);
+    _snprintf(chemin, MAX_PATH, "%snativePC\\arc\\model\\item\\%s.arc", g_dossier, nom);
+    return GetFileAttributesA(chemin) != INVALID_FILE_ATTRIBUTES;
+}
+
+static int piece_traitee(DWORD piece, int jusqu_seed, int jusqu_examen)
+{
+    int j;
+    if (g_visible) for (j = 0; j < jusqu_seed; j++) if (g_seed[j].piece == piece) return 1;
+    for (j = 0; j < jusqu_examen; j++) if (g_examens[j].piece == piece) return 1;
+    return 0;
+}
+
+/* Ajoute à la liste de ressources de « piece » les modèles des objets que la seed y fait apparaître : objets posés
+ * (si les objets visibles sont actifs) et objets examinés. Renvoie le nombre de modèles ajoutés. */
+static int ajouter_modeles_piece(DWORD piece, int *sans_modele)
+{
+    DWORD zone = piece >> 8, salle = piece & 0xFF, *case_table, *ancienne, *neuve;
+    int j, n = 0, nouveaux = 0;
+    if (zone < 1 || zone > 5 || salle > g_tables_pieces[zone - 1].dernier) return 0;
+    case_table = (DWORD *)(g_tables_pieces[zone - 1].table + salle * 4);
+    if (!lisible(case_table, 4, 1)) return 0;
+    ancienne = (DWORD *)*case_table;
+    if (ancienne) while (n < 256 && lisible(&ancienne[n], 4, 0) && ancienne[n]) n++;
+    neuve = (DWORD *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (n + 64 + 1) * sizeof(DWORD));
+    if (!neuve) return 0;
+    if (n) memcpy(neuve, ancienne, n * sizeof(DWORD));
+    for (j = 0; g_visible && j < g_nb; j++) {           /* objets posés de cette pièce */
+        if (g_seed[j].piece != piece) continue;
+        if (!modele_existe(g_seed[j].id, g_noms_modeles[j], sizeof g_noms_modeles[j])) { (*sans_modele)++; continue; }
+        g_modele_ok[j] = 1;
+        if (liste_contient(neuve, n + nouveaux, g_noms_modeles[j]) || nouveaux >= 64) continue;
+        neuve[n + nouveaux++] = (DWORD)g_noms_modeles[j];
+    }
+    for (j = 0; j < g_nb_examens; j++) {                /* objets examinés de cette pièce */
+        if (g_examens[j].piece != piece) continue;
+        if (!modele_existe(g_examens[j].id, g_noms_examens[j], sizeof g_noms_examens[j])) { (*sans_modele)++; continue; }
+        if (liste_contient(neuve, n + nouveaux, g_noms_examens[j]) || nouveaux >= 64) continue;
+        neuve[n + nouveaux++] = (DWORD)g_noms_examens[j];
+    }
+    if (nouveaux) {
+        *case_table = (DWORD)neuve;                     /* la table est dans .data : modifiable */
+        return nouveaux;
+    }
+    HeapFree(GetProcessHeap(), 0, neuve);
+    return 0;
+}
+
 static void ajouter_modeles(void)
 {
-    int i, j, pieces = 0, ajouts = 0, sans_modele = 0;
-    for (i = 0; i < g_nb; i++) {
-        DWORD piece = g_seed[i].piece, zone = piece >> 8, salle = piece & 0xFF, *case_table, *ancienne, *neuve;
-        int n = 0, nouveaux = 0, deja_vue = 0;
-        for (j = 0; j < i; j++) if (g_seed[j].piece == piece) { deja_vue = 1; break; }
-        if (deja_vue) continue;                         /* une seule fois par pièce */
-        if (zone < 1 || zone > 5 || salle > g_tables_pieces[zone - 1].dernier) continue;
-        case_table = (DWORD *)(g_tables_pieces[zone - 1].table + salle * 4);
-        if (!lisible(case_table, 4, 1)) continue;
-        ancienne = (DWORD *)*case_table;
-        if (ancienne) while (n < 256 && lisible(&ancienne[n], 4, 0) && ancienne[n]) n++;
-        neuve = (DWORD *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (n + 64 + 1) * sizeof(DWORD));
-        if (!neuve) continue;
-        if (n) memcpy(neuve, ancienne, n * sizeof(DWORD));
-        for (j = i; j < g_nb; j++) {                    /* tous les emplacements de cette pièce */
-            char chemin[MAX_PATH];
-            if (g_seed[j].piece != piece) continue;
-            _snprintf(g_noms_modeles[j], sizeof g_noms_modeles[j], "i%03lup", (unsigned long)g_seed[j].id);
-            _snprintf(chemin, MAX_PATH, "%snativePC\\arc\\model\\item\\%s.arc", g_dossier, g_noms_modeles[j]);
-            if (GetFileAttributesA(chemin) == INVALID_FILE_ATTRIBUTES) { sans_modele++; continue; }
-            g_modele_ok[j] = 1;
-            if (liste_contient(neuve, n + nouveaux, g_noms_modeles[j]) || nouveaux >= 64) continue;
-            neuve[n + nouveaux++] = (DWORD)g_noms_modeles[j];
-        }
-        if (nouveaux) {
-            *case_table = (DWORD)neuve;                 /* la table est dans .data : modifiable */
-            pieces++;
-            ajouts += nouveaux;
-        } else {
-            HeapFree(GetProcessHeap(), 0, neuve);
-        }
+    int i, j, pieces = 0, ajouts = 0, sans_modele = 0, n;
+    for (i = 0; g_visible && i < g_nb; i++) {
+        if (piece_traitee(g_seed[i].piece, i, 0)) continue;           /* une seule fois par pièce */
+        if ((n = ajouter_modeles_piece(g_seed[i].piece, &sans_modele)) > 0) { pieces++; ajouts += n; }
     }
-    for (i = 0; i < g_nb_decors; i++) {             /* décor : le modèle du nouvel objet doit exister */
+    for (i = 0; i < g_nb_examens; i++) {
+        if (piece_traitee(g_examens[i].piece, g_nb, i)) continue;
+        if ((n = ajouter_modeles_piece(g_examens[i].piece, &sans_modele)) > 0) { pieces++; ajouts += n; }
+    }
+    for (i = 0; g_visible && i < g_nb_decors; i++) {   /* décor : le modèle du nouvel objet doit exister */
         char nom[16], chemin[MAX_PATH];
         _snprintf(nom, sizeof nom, "i%03lup", (unsigned long)g_decors[i].nouveau);
         _snprintf(chemin, MAX_PATH, "%snativePC\\arc\\model\\item\\%s.arc", g_dossier, nom);
@@ -328,8 +397,9 @@ static void ajouter_modeles(void)
             if (g_seed[j].piece == g_decors[i].piece && g_seed[j].id == g_decors[i].nouveau && g_modele_ok[j]) break;
         g_decors[i].ok = j < g_nb && GetFileAttributesA(chemin) != INVALID_FILE_ATTRIBUTES;
     }
-    journal("Objets visibles : %d modele(s) ajoute(s) dans %d piece(s) ; %d emplacement(s) sans modele "
-            "(remplaces seulement au ramassage).", ajouts, pieces, sans_modele);
+    journal("Modeles : %d ajoute(s) dans %d piece(s) (objets visibles : %s, objets examines : %d) ; "
+            "%d objet(s) sans modele (remplaces seulement au ramassage, sans apercu).",
+            ajouts, pieces, g_visible ? "oui" : "non", g_nb_examens, sans_modele);
 }
 
 /* Appelée à l'entrée de la fonction des modèles décoratifs (ESP = adresse de retour, +4 = id). */
@@ -374,6 +444,21 @@ static void remplacer_au_placement(CONTEXT *c)
     ancienne_qte = *(DWORD *)(esp + 0x10);
     *(DWORD *)(esp + 0x04) = e->id;
     *(DWORD *)(esp + 0x10) = e->qte;
+    {   /* +8 = pointeur vers la position (x, y, z) : objet remonté si la seed le demande */
+        int k;
+        DWORD pos = *(DWORD *)(esp + 0x08);
+        for (k = 0; k < g_nb_decalages; k++) {
+            if (g_decalages[k].piece != piece || g_decalages[k].ancien != ancien_id) continue;
+            if (!lisible((void *)pos, 12, 0)) break;
+            memcpy(g_positions[k], (void *)pos, 12);
+            journal("Piece %X : position d'origine %.1f %.1f %.1f, objet remonte de %.0f", piece,
+                    (double)g_positions[k][0], (double)g_positions[k][1], (double)g_positions[k][2],
+                    (double)g_decalages[k].y);
+            g_positions[k][1] += g_decalages[k].y;
+            *(DWORD *)(esp + 0x08) = (DWORD)g_positions[k];
+            break;
+        }
+    }
     if (g_messages < 500) {
         g_messages++;
         journal("Piece %X : objet pose remplace (evenement %lu) : id %lu x%lu -> id %lu x%lu", piece,
@@ -1054,9 +1139,158 @@ static void diagnostic_periodique(void)
     }
 }
 
+/* ------------------------------------------------------ objets examinés (v0.9.3)
+ *
+ * Trouvé le 20/11/2026 (et utilisé de la même façon par le randomizer de Benn Powell sur une version plus ancienne
+ * du jeu) : la fonction qui donne un objet au joueur (bhd.exe+151260) a deux chemins. Objet posé : bhd.exe+1512ED
+ * (point d'arrêt DR0 ci-dessus). Objet donné sans objet posé ([esi+0x6864] == -1 : joyaux des trophées, document
+ * sur le corps de Wesker…) : bhd.exe+151284 lit l'id en [esi+0x624C] et la quantité en [esi+0x6254].
+ *
+ * Les 4 registres de débogage sont déjà pris (ramassage + objets visibles) : on remplace donc, en mémoire seulement
+ * et après le déchiffrement par la protection Steam, le premier octet de l'instruction de bhd.exe+151284
+ * (mov eax,[esi+0x624C], 6 octets) par INT3. Le gestionnaire remplace l'objet si la seed le prévoit, exécute
+ * lui-même l'instruction (EAX = [esi+0x624C]) et reprend juste après. Rien n'est posé si les octets ne sont pas
+ * ceux attendus (autre version du jeu, autre mod). */
+#define ADR_EXAMEN      (BASE_JEU + 0x151284u)
+/* Aperçu (test du 20/11/2026 : objet remplacé mais aperçu noir) : au début de l'examen, bhd.exe+148ECC lit
+ * [esi+0x6864] et, s'il vaut -1, bhd.exe+148ED7 appelle bhd.exe+145180 avec l'id [esi+0x624C], qui charge
+ * l'aperçu arc\itemv\iNNNv.arc. Cela se passe AVANT bhd.exe+151284 : on remplace donc l'objet dès bhd.exe+148ECC
+ * (mov eax,[esi+0x6864], 6 octets), sinon l'aperçu chargé est celui de l'objet d'origine et la fenêtre reste noire. */
+#define ADR_APERCU      (BASE_JEU + 0x148ECCu)
+static const BYTE g_examen_attendu[12] = { 0x8B, 0x86, 0x4C, 0x62, 0x00, 0x00, 0x89, 0x86, 0x44, 0x62, 0x00, 0x00 };
+static const BYTE g_apercu_attendu[17] = { 0x8B, 0x86, 0x64, 0x68, 0x00, 0x00, 0x83, 0xF8, 0xFF, 0x75, 0x1F,
+                                           0xFF, 0xB6, 0x4C, 0x62, 0x00, 0x00 };
+static int  g_examens_voulus;               /* 1 : poser le point d'arrêt des objets examinés */
+static volatile LONG g_examen_pose, g_apercu_pose;
+static DWORD g_examen_fenetre, g_examen_compte;
+/* Remplacement fait en avance (aperçu) : la structure, l'id d'origine et le nouvel id, pour le journal. */
+static DWORD g_tot_esi, g_tot_ancien, g_tot_qte, g_tot_id;
+
+/* Remplace (poser = 1) ou rend (poser = 0) le premier octet de l'instruction en « adr » par INT3, si les octets
+ * suivants sont bien ceux attendus. */
+static int poser_int3(DWORD adr, const BYTE *attendu, DWORD taille, volatile LONG *pose, int poser, const char *nom)
+{
+    BYTE *p = (BYTE *)adr;
+    DWORD ancienne, inutile;
+    BYTE voulu = poser ? 0xCC : attendu[0];
+    if (!lisible(p, taille, 0)) return 0;
+    if (memcmp(p + 1, attendu + 1, taille - 1) != 0 || (p[0] != 0xCC && p[0] != attendu[0])) {
+        if (poser) journal("Objets examines : code inattendu en %s, rien n'est pose.", nom);
+        return 0;
+    }
+    if (p[0] == voulu) { InterlockedExchange(pose, poser); return 1; }
+    if (!VirtualProtect(p, 1, PAGE_EXECUTE_READWRITE, &ancienne)) return 0;
+    if (poser) InterlockedExchange(pose, 1);    /* avant l'écriture : le gestionnaire doit le savoir */
+    p[0] = voulu;
+    VirtualProtect(p, 1, ancienne, &inutile);
+    FlushInstructionCache(GetCurrentProcess(), p, 1);
+    if (!poser) InterlockedExchange(pose, 0);
+    return 1;
+}
+
+static int poser_examen(int poser)
+{
+    int ok = poser_int3(ADR_EXAMEN, g_examen_attendu, sizeof g_examen_attendu, &g_examen_pose, poser,
+                        "bhd.exe+151284");
+    /* l'aperçu ne sert qu'aux remplacements : inutile en simple relevé */
+    if (!poser || (ok && g_nb_examens > 0))
+        poser_int3(ADR_APERCU, g_apercu_attendu, sizeof g_apercu_attendu, &g_apercu_pose, poser, "bhd.exe+148ECC");
+    return ok;
+}
+
+static const Examen *chercher_examen(DWORD piece, DWORD id)
+{
+    int i;
+    for (i = 0; i < g_nb_examens; i++)
+        if (g_examens[i].piece == piece && g_examens[i].ancien == id) return &g_examens[i];
+    return NULL;
+}
+
+/* bhd.exe+148ECC : objet donné sans objet posé ([esi+0x6864] == -1), avant le chargement de son aperçu. */
+static void remplacer_avant_apercu(DWORD esi)
+{
+    DWORD piece = 0, id;
+    const Examen *e;
+    if (!lisible((void *)(esi + 0x624C), 12, 1)) return;
+    id = *(DWORD *)(esi + 0x624C);
+    if (esi == g_tot_esi && id == g_tot_id) return;          /* déjà remplacé (pas deux fois : échanges A <-> B) */
+    piece_actuelle(&piece);
+    e = chercher_examen(piece, id);
+    if (!e) return;
+    g_tot_esi = esi;
+    g_tot_ancien = id;
+    g_tot_qte = *(DWORD *)(esi + 0x6254);
+    g_tot_id = e->id;
+    *(volatile DWORD *)(esi + 0x624C) = e->id;
+    *(volatile DWORD *)(esi + 0x6254) = e->qte;
+}
+
+static void traiter_examen(DWORD esi)
+{
+    DWORD piece = 0, id, qte, maintenant = GetTickCount();
+    const Examen *e;
+    if (!lisible((void *)(esi + 0x624C), 12, 1)) return;
+    if (maintenant - g_examen_fenetre > 2000) { g_examen_fenetre = maintenant; g_examen_compte = 0; }
+    if (++g_examen_compte > 30) {                        /* même garde-fou que pour le ramassage */
+        if (!g_coupe) {
+            InterlockedExchange(&g_coupe, 1);
+            journal("GARDE-FOU : trop d'objets examines, randomizer coupe. Recharge ta sauvegarde.");
+        }
+        return;
+    }
+    id = *(DWORD *)(esi + 0x624C);
+    qte = *(DWORD *)(esi + 0x6254);
+    piece_actuelle(&piece);
+    if (esi == g_tot_esi && id == g_tot_id) {             /* remplacé dès le début de l'examen (aperçu) */
+        g_tot_esi = 0;
+        journal("Objet examine\tpiece=%X\tid=%lu\tqte=%lu\tremplace par id %lu (quantite %lu)",
+                piece, (unsigned long)g_tot_ancien, (unsigned long)g_tot_qte, (unsigned long)id, (unsigned long)qte);
+        return;
+    }
+    e = chercher_examen(piece, id);
+    if (e) {
+        *(volatile DWORD *)(esi + 0x624C) = e->id;
+        *(volatile DWORD *)(esi + 0x6254) = e->qte;
+        journal("Objet examine\tpiece=%X\tid=%lu\tqte=%lu\tremplace par id %lu (quantite %lu, sans apercu)",
+                piece, (unsigned long)id, (unsigned long)qte, (unsigned long)e->id, (unsigned long)e->qte);
+        return;
+    }
+    if (g_messages < 500) {
+        g_messages++;
+        journal("Objet examine\tpiece=%X\tid=%lu\tqte=%lu", piece, (unsigned long)id, (unsigned long)qte);
+    }
+}
+
 static LONG CALLBACK gestionnaire(EXCEPTION_POINTERS *ep)
 {
     CONTEXT *c = ep->ContextRecord;
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_BREAKPOINT &&
+        (DWORD)ep->ExceptionRecord->ExceptionAddress == ADR_APERCU) {
+        DWORD esi = c->Esi;
+        if (!g_apercu_pose || !lisible((void *)(esi + 0x6864), 4, 0)) {
+            poser_int3(ADR_APERCU, g_apercu_attendu, sizeof g_apercu_attendu, &g_apercu_pose, 0, "");
+            c->Eip = ADR_APERCU;               /* instruction d'origine rendue : on la laisse s'exécuter */
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (!g_coupe && *(DWORD *)(esi + 0x6864) == 0xFFFFFFFFu) remplacer_avant_apercu(esi);
+        c->Eax = *(DWORD *)(esi + 0x6864);     /* l'instruction remplacée : mov eax,[esi+0x6864] */
+        c->Eip = ADR_APERCU + 6;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_BREAKPOINT &&
+        (DWORD)ep->ExceptionRecord->ExceptionAddress == ADR_EXAMEN) {
+        DWORD esi = c->Esi;
+        if (!g_examen_pose || !lisible((void *)(esi + 0x624C), 4, 0)) {
+            poser_int3(ADR_EXAMEN, g_examen_attendu, sizeof g_examen_attendu, &g_examen_pose, 0, "");
+            c->Eip = ADR_EXAMEN;               /* instruction d'origine rendue : on la laisse s'exécuter */
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        if (!g_coupe) traiter_examen(esi);
+        c->Eax = *(DWORD *)(esi + 0x624C);     /* l'instruction remplacée : mov eax,[esi+0x624C] */
+        c->Eip = ADR_EXAMEN + 6;
+        if (g_coupe) poser_examen(0);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
     if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP)
         return EXCEPTION_CONTINUE_SEARCH;
     if (c->Eip == ADR_DECOR && g_veille[2] == ADR_DECOR) {   /* modèle décoratif (Visible=1) */
@@ -1220,13 +1454,16 @@ static DWORD WINAPI surveillance(LPVOID inutile)
     Sleep(3000);
 
     if (g_diagnostic) vider_image();
-    if (g_visible) ajouter_modeles();             /* écran titre : aucune pièce n'est encore chargée */
+    if (g_visible || g_nb_examens) ajouter_modeles();   /* écran titre : aucune pièce n'est encore chargée */
     AddVectoredExceptionHandler(1, gestionnaire);
     InterlockedExchange(&g_actif, 1);
     journal("Point d'arret pose en bhd.exe+1512ED.");
+    if (g_examens_voulus && poser_examen(1))
+        journal("Objets examines : point d'arret pose en bhd.exe+151284 (%d remplacement(s) prevu(s)).", g_nb_examens);
 
     for (tour = 0;; tour++) {
         if (g_coupe) {
+            if (g_examen_pose) poser_examen(0);
             parcourir_threads(0);
             journal("Points d'arret retires de tous les threads.");
             return 0;
@@ -1251,7 +1488,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Resident Evil HD Remaster Randomizer v0.9.0 : demarrage");
+    journal("---- Resident Evil HD Remaster Randomizer v0.9.3 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
@@ -1290,10 +1527,14 @@ static void demarrer(void)
                 g_diagnostic || g_releve ? " (releve ou diagnostic seul)" : "");
         if (!g_diagnostic && !g_releve) return;
     } else {
-        journal("Seed %ld chargee : %d emplacements, armes aleatoires : %s. Fichier : %s",
-                g_graine, g_nb, g_armes == 1 ? "OUI" : g_armes == 0 ? "non" : "inconnu", chemin_seed);
+        journal("Seed %ld chargee : %d emplacements, %d objet(s) examine(s), armes aleatoires : %s. Fichier : %s",
+                g_graine, g_nb, g_nb_examens, g_armes == 1 ? "OUI" : g_armes == 0 ? "non" : "inconnu", chemin_seed);
     }
-    if (g_nb == 0 && !g_diagnostic && !g_releve) return;
+    if (g_nb == 0 && g_nb_examens == 0 && !g_diagnostic && !g_releve) return;
+    /* Objets examinés : relevé (pour connaître leurs ids), diagnostic, ou seed qui en remplace. Examens=0 dans
+     * randomizer.ini désactive ce point d'arrêt. */
+    g_examens_voulus = GetPrivateProfileIntA("Randomizer", "Examens", 1, ini)
+                       && (g_releve || g_diagnostic || g_nb_examens > 0);
 
     /* Objets visibles : option choisie à la génération (dans la seed) ; Visible=0/1 dans randomizer.ini
      * la remplace. Le mode relevé doit voir les objets d'origine : il la désactive. */

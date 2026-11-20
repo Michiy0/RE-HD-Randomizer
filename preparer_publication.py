@@ -48,6 +48,7 @@ FICHIERS = {
     "Randomizer/importer_journal.py": "Randomizer/importer_journal.py",
     "Randomizer/progression.py": "Randomizer/progression.py",
     "Randomizer/textes.py": "Randomizer/textes.py",
+    "Randomizer/noms_objets.py": "Randomizer/noms_objets.py",
     "Randomizer/mise_a_jour.py": "Randomizer/mise_a_jour.py",
     "Randomizer/noms_jeu.py": "Randomizer/noms_jeu.py",
     "images/progression.svg": "images/progression.svg",

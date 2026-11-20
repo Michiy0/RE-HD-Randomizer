@@ -7,6 +7,7 @@ que l'interface. Les options pas encore prises en charge sont visibles mais gris
 Lancer sans compiler :  python application.py
 Construire le .exe   :  construire_exe.bat
 """
+import json
 import os
 import re
 import shutil
@@ -25,7 +26,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.9.2"
+VERSION = "0.9.3"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
@@ -1197,7 +1198,7 @@ class Application(tk.Tk):
                 if id_arme is not None and perso in (None, self.personnage.get()) and self.armes_cochees[cle].get()}
 
     def spoiler_actuel(self):
-        """(titre, texte) du spoiler : dernière seed générée, sinon celle installée dans le jeu."""
+        """(titre, contenu de la seed .json) du spoiler : dernière seed générée, sinon celle installée dans le jeu."""
         if self.dernier_resultat and self.dernier_resultat[1]:
             return self.t("spoiler_genere"), self.dernier_resultat[1]
         dossier = self.dossier_jeu.get()
@@ -1205,11 +1206,14 @@ class Application(tk.Tk):
         if seed:
             base = f"seed_{seed[0]}{'_armes' if seed[1] else ''}"
             # avec ou sans armes bonus : on prend le spoiler le plus récent de cette graine
-            fichiers = [f for f in (self.dossier_seeds / f"{base}_spoiler.txt",
-                                    self.dossier_seeds / f"{base}_bonus_spoiler.txt") if f.exists()]
+            fichiers = [f for f in (self.dossier_seeds / f"{base}.json",
+                                    self.dossier_seeds / f"{base}_bonus.json") if f.exists()]
             if fichiers:
                 fichier = max(fichiers, key=lambda f: f.stat().st_mtime)
-                return self.t("spoiler_installe"), fichier.read_text(encoding="utf-8")
+                try:
+                    return self.t("spoiler_installe"), json.loads(fichier.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    pass
         return None, None
 
     # --- onglet « Info » : crédits et liens
@@ -1695,11 +1699,12 @@ class Application(tk.Tk):
 
         self.bouton_generer.state(["disabled"])
         self.ecrire(self.t("generation"), effacer=True)
+        # messages : textes.Msg traduits à l'affichage (changer de langue réaffiche le journal dans la nouvelle)
         messages, spoiler = [], []
         langue = self.langue.get()
         armes = self.armes_choisies()
         if self.armes.get() and not armes:         # « Armes aléatoires » sans aucune arme cochée
-            messages.append(self.t("aucune_arme"))
+            messages.append(textes.Msg("aucune_arme"))
 
         def travail():
             try:
@@ -1708,9 +1713,9 @@ class Application(tk.Tk):
                                   personnage=self.personnage.get(), difficulte=self.difficulte.get(),
                                   langue=langue, dire_spoiler=spoiler.append, armes_choisies=armes,
                                   objets_visibles=self.visibles.get(), arme_depart=self.arme_depart.get(),
-                                  armes_bonus=self.armes_bonus_choisies())
+                                  armes_bonus=self.armes_bonus_choisies(), messages_differes=True)
             except Exception as e:  # on affiche l'erreur plutôt que de fermer l'application
-                messages.append(textes.tr("erreur", langue, e=e))
+                messages.append(textes.Msg("erreur", e=e))
                 ok = False
             self.after(0, lambda: self.fin_generation(messages, spoiler[0] if spoiler else None, ok))
 
@@ -1723,29 +1728,32 @@ class Application(tk.Tk):
         self.actualiser_etat()
 
     def afficher_resultat(self):
-        """Journal de l'onglet Randomizer : résumé seulement (deux premières lignes du spoiler).
-        Onglet Spoiler : liste complète, si la case est cochée."""
+        """Journal de l'onglet Générer : résumé seulement. Onglet Spoiler : liste complète, si la case est cochée.
+        Tout est rendu dans la langue actuelle (la seed est gardée sous forme de données, pas de texte)."""
+        langue = self.langue.get()
         if self.dernier_resultat:
             messages, spoiler, ok = self.dernier_resultat
             lignes = []
             if spoiler:
-                lignes.append("\n".join(spoiler.splitlines()[:2]) + "\n" + self.t("renvoi_spoiler"))
-            lignes += messages
+                lignes.append("\n".join(gen.resume_spoiler(spoiler, langue)) + "\n" + self.t("renvoi_spoiler"))
+            lignes += [textes.rendre(m, langue) for m in messages]
             self.ecrire("\n".join(lignes), effacer=True)
             if not ok:
                 self.ecrire("\n" + self.t("echec_generation"))
-        titre, texte = self.spoiler_actuel()
-        if texte is None:
-            note, contenu = self.t("spoiler_aucun"), ""
+        titre, seed = self.spoiler_actuel()
+        if seed is None:
+            note, contenu = self.t("spoiler_aucun"), None
         elif self.afficher_spoiler.get():
-            note, contenu = titre, texte
+            note, contenu = titre, seed
         else:
-            note, contenu = self.t("spoiler_masque", titre=titre), ""
+            note, contenu = self.t("spoiler_masque", titre=titre), None
         if not hasattr(self, "zone_spoiler"):
             return                                  # appelé pendant la construction de la fenêtre
-        resume, lignes = lire_spoiler(contenu)
-        if resume and contenu:
-            note += "\n" + "  ·  ".join(resume)
+        lignes = []
+        if contenu:
+            note += "\n" + "  ·  ".join(gen.resume_spoiler(contenu, langue))
+            lignes = [(f"{piece} · {nom}" if nom else piece, avant, apres, bonus)
+                      for piece, nom, avant, apres, bonus in gen.lignes_spoiler(contenu, langue)]
         self.note_spoiler.configure(text=note)
         cherche = sans_accents(self.recherche_spoiler.get().strip())
         if cherche:
@@ -1762,26 +1770,6 @@ class Application(tk.Tk):
             elif origine == nouveau:
                 tags.append("meme")
             self.zone_spoiler.insert("", "end", values=(lieu, origine, nouveau), tags=tags)
-
-
-MOTIF_LIGNE_SPOILER = re.compile(r"^\[\s*([0-9A-Za-z]+)\] (.+?): (.+?)  ->  (.+)$")
-
-
-def lire_spoiler(texte):
-    """Découpe le spoiler texte (fichier *_spoiler.txt) en (résumé, lignes du tableau).
-    Ligne : (lieu, objet d'origine, nouvel objet, arme bonus ?). Les lignes non reconnues sont ignorées."""
-    if not texte:
-        return [], []
-    brut = texte.splitlines()
-    resume = [l for l in brut[:2] if l.strip()]
-    lignes = []
-    for l in brut:
-        m = MOTIF_LIGNE_SPOILER.match(l)
-        if m:
-            piece, nom_piece, origine, nouveau = m.groups()
-            bonus = not re.search(r" x\d+$", nouveau)      # seules les armes bonus n'ont pas de quantité
-            lignes.append((f"{piece.upper()} · {nom_piece}", origine, nouveau, bonus))
-    return resume, lignes
 
 
 def sans_accents(texte):

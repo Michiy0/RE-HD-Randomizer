@@ -41,25 +41,11 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # textes.py, même avec python -I
-from textes import tr  # noqa: E402
+from textes import tr, Msg, rendre  # noqa: E402
+from noms_objets import nom_officiel  # noqa: E402
 
 FICHIER_PAR_DEFAUT = "donnees_randomizer_RE1.xlsx"
 
-NOMS_OBJETS = {
-    3: "Pistolet",
-    4: "Pistolet d'autodéfense",
-    6: "Fusil",
-    13: "Fusil d'assaut",
-    17: "Chargeur de pistolet",
-    18: "Munitions de fusil",
-    33: "Spray de premiers secours",
-    34: "Herbe verte",
-    35: "Herbe rouge",
-    68: "Ruban encreur",
-    101: "Trousse de premiers secours",
-    112: "Poignard",
-    113: "Grenade aveuglante",
-}
 # Objets toujours mélangés sans risque
 IDS_LIBRES_DE_BASE = {4, 17, 18, 33, 34, 35, 68, 101, 112, 113}   # 18, 33, 35, 113 ajoutés le 18/11/2026
 # 4 = pistolet d'autodéfense (une seule balle) : un objet comme le poignard, pas une arme de la liste (joueur, 19/11/2026)
@@ -80,6 +66,11 @@ IDS_ARMES = {i for _, i, _ in ARMES if i is not None}
 # (clé du nom dans textes.py, id, quantité) : Samurai Edge, lance-roquettes illimité
 ARMES_BONUS = [("arme_bonus_samurai", 5, 15), ("arme_bonus_roquettes", 14, 4)]
 IDS_ARMES_BONUS = {i for _, i, _ in ARMES_BONUS}
+
+# Emplacements « dans un mécanisme » : le jeu y place l'objet à un point caché dans le décor, seul le modèle d'origine
+# dépasse. Le nouvel objet visible par terre est remonté de y (cm). (pièce, id d'origine) -> y. Réglé en jeu :
+#   50F, capsule de carburant (111) dans sa machine : 45 (test du 20/11/2026 : 0 et 30 cachés, 100 en l'air).
+DECALAGES = {("50F", 111): 45}
 
 MOTIF_EMPREINTE = re.compile(r"brut \+0x10\.\.\+0x2C = ((?:[0-9A-Fa-f]{8}\s*){8})")
 
@@ -187,6 +178,48 @@ def placer_armes_bonus(resultat, graine, ids_bonus=None):
     return places
 
 
+def nom_objet(ident, langue="fr"):
+    """Nom officiel de l'objet dans le jeu (anglais si le jeu n'a pas la langue) ; armes bonus : textes.py."""
+    if ident in IDS_ARMES_BONUS:
+        return tr(f"objet_{ident}", langue)
+    return nom_officiel(ident, langue) or f"#{ident}"
+
+
+def _fois(objet):
+    """Quantité affichée, sauf pour les armes bonus : munitions illimitées (le nom le dit déjà)."""
+    return "" if objet["id"] in IDS_ARMES_BONUS else f" x{objet['quantite']}"
+
+
+def resume_spoiler(sortie, langue="fr"):
+    """Lignes de résumé du spoiler (graine, nombre d'objets mélangés), à partir du contenu du fichier .json."""
+    armes = sortie.get("options", {}).get("armes_aleatoires", False)
+    lignes = [tr("gen_resume", langue, graine=sortie["graine"], armes=tr("gen_oui" if armes else "gen_non", langue))]
+    if "laisses" in sortie:                  # absent des seeds d'avant la v0.9.3
+        lignes.append(tr("gen_compte", langue, n=len(sortie["remplacements"]), m=sortie["laisses"],
+                         pistolet="" if armes else tr("gen_pistolet", langue)))
+    return lignes
+
+
+def lignes_spoiler(sortie, langue="fr"):
+    """Lignes du tableau du spoiler, triées par pièce :
+    (pièce, nom de la pièce, objet d'origine, nouvel objet, arme bonus ?)."""
+    return [(r["piece"].upper(), r.get("nom_piece") or "",
+             nom_objet(r["ancien"]["id"], langue) + _fois(r["ancien"]),
+             nom_objet(r["nouveau"]["id"], langue) + _fois(r["nouveau"]),
+             r["nouveau"]["id"] in IDS_ARMES_BONUS)
+            for r in sorted(sortie["remplacements"], key=lambda x: x["piece"])]
+
+
+def texte_spoiler(sortie, langue="fr"):
+    """Spoiler complet en texte (fichier *_spoiler.txt et ligne de commande)."""
+    lignes = resume_spoiler(sortie, langue) + [""]
+    lignes += [f"[{piece:>3}] {nom}: {avant}  ->  {apres}" for piece, nom, avant, apres, _ in lignes_spoiler(sortie, langue)]
+    if sortie.get("non_utilises"):
+        lignes += ["", tr("gen_non_utilises", langue)]
+        lignes += [f"  - [{piece}] {description}" for piece, description in sortie["non_utilises"]]
+    return "\n".join(lignes)
+
+
 def verifier(resultat):
     """Contrôles simples : on ne perd ni ne crée aucun objet."""
     avant = Counter((r["ancien"]["id"], r["ancien"]["quantite"]) for r in resultat)
@@ -246,30 +279,33 @@ def seed_installee(dossier):
     return (m.group(1) if m else "?", bool(a and a.group(1) == "true"))
 
 
-def installer_seed(fichier_lua, dossier_jeu, graine, armes, dire=print, langue="fr"):
+def installer_seed(fichier_lua, dossier_jeu, graine, armes, dire=print, langue="fr", messages_differes=False):
+    """messages_differes : dire reçoit des textes.Msg (traduits à l'affichage) au lieu de textes."""
+    if not messages_differes:
+        dire_texte = dire
+        dire = lambda m: dire_texte(rendre(m, langue))   # noqa: E731
     dossier = Path(dossier_jeu) if dossier_jeu else trouver_dossier_jeu()
     if dossier is None or not (dossier / "bhd.exe").exists():
-        dire(tr("gen_install_impossible", langue))
+        dire(Msg("gen_install_impossible"))
         return False
     ancienne = seed_installee(dossier)
     cible = dossier / NOM_SEED_JEU
     cible.write_bytes(Path(fichier_lua).read_bytes())
-    suffixe = tr("gen_armes", langue)
-    dire(tr("gen_installee", langue, graine=graine, armes=suffixe if armes else "", chemin=cible)
-         + (tr("gen_remplace", langue, ancienne=f"{ancienne[0]}{suffixe if ancienne[1] else ''}")
-            if ancienne else ""))
+    suffixe = Msg("gen_armes")
+    remplace = Msg("gen_remplace", ancienne=Msg(None, ancienne[0], suffixe if ancienne[1] else "")) if ancienne else ""
+    dire(Msg("gen_installee", remplace, graine=graine, armes=suffixe if armes else "", chemin=cible))
 
     ini = dossier / "randomizer.ini"
     if ini.exists():
         texte = ini.read_text(encoding="utf-8", errors="replace")
         m = re.search(r"(?im)^\s*Seed\s*=\s*(.+?)\s*$", texte)
         if m and m.group(1).lower() != NOM_SEED_JEU:
-            dire(tr("gen_ini_autre", langue, seed=m.group(1), nom=NOM_SEED_JEU))
+            dire(Msg("gen_ini_autre", seed=m.group(1), nom=NOM_SEED_JEU))
         if re.search(r"(?im)^\s*Actif\s*=\s*0", texte):
-            dire(tr("gen_ini_inactif", langue))
+            dire(Msg("gen_ini_inactif"))
     if not (dossier / "xinput1_4.dll").exists():
-        dire(tr("gen_dll_absente", langue))
-    dire(tr("gen_relance", langue))
+        dire(Msg("gen_dll_absente"))
+    dire(Msg("gen_relance"))
     return True
 
 
@@ -279,16 +315,22 @@ def tirer_graine():
 
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
              dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None,
-             armes_choisies=None, objets_visibles=True, arme_depart=False, armes_bonus=False):
+             armes_choisies=None, objets_visibles=True, arme_depart=False, armes_bonus=False,
+             messages_differes=False):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
     Renvoie True si tout s'est bien passé. langue : langue des messages et du spoiler (textes.py).
-    dire_spoiler : si donné, reçoit le spoiler complet (sinon il passe par dire).
+    dire_spoiler : si donné, reçoit le contenu de la seed (dictionnaire du fichier .json, à afficher avec
+    resume_spoiler / lignes_spoiler dans n'importe quelle langue) ; sinon le spoiler texte passe par dire.
+    messages_differes : dire reçoit des textes.Msg (traduits à l'affichage, voir textes.rendre).
     armes_choisies : ids des armes à mélanger avec armes_aleatoires (None = toutes celles connues).
     objets_visibles : la DLL remplace aussi les objets posés (modèle par terre et aperçu) avant ramassage.
     arme_depart : avec armes_aleatoires, une arme est toujours placée au pistolet du hall (106).
     armes_bonus : ids des armes bonus à placer (option « Fun ») ; True = toutes, False / None / vide = aucune."""
+    dire_brut = dire
+    if not messages_differes:
+        dire = lambda m: dire_brut(rendre(m, langue))   # noqa: E731
     if not Path(fichier).exists():
-        dire(tr("gen_donnees", langue, fichier=fichier))
+        dire(Msg("gen_donnees", fichier=fichier))
         return False
     ids_armes = set(IDS_ARMES) if armes_choisies is None else set(armes_choisies) & IDS_ARMES
     armes_aleatoires = bool(armes_aleatoires and ids_armes)   # aucune arme cochée = option sans effet
@@ -302,8 +344,7 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
 
     emplacements, ignores = lire_emplacements(fichier, personnage, difficulte)
     if not emplacements:
-        dire(tr("gen_aucun", langue, personnage=personnage,
-                difficulte=tr(f"diff_{difficulte}", langue)))
+        dire(Msg("gen_aucun", personnage=personnage, difficulte=Msg(f"diff_{difficulte}")))
         return False
     resultat = generer(emplacements, graine, ids_libres)
     if arme_depart and armes_aleatoires:
@@ -320,6 +361,11 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
                                       "arme_depart": bool(arme_depart and armes_aleatoires),
                                       "armes_bonus": sorted(armes_bonus)},
         "remplacements": resultat,
+        "laisses": len(emplacements) - len(resultat),
+        "non_utilises": [[f["piece"].upper(), f["description"]] for f, _ in ignores],
+        # objets examinés (joyaux des trophées…) : [pièce, id d'origine, nouvel id, quantité]. Lus par la DLL v0.9.3+
+        # (point d'arrêt en bhd.exe+151284). Vide tant que ces objets (surtout des objets de quête) ne sont pas mélangés.
+        "examens": [],
     }
     (sortie_dir / f"{nom}.json").write_text(json.dumps(sortie, indent=1, ensure_ascii=False), encoding="utf-8")
 
@@ -346,30 +392,27 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     for (piece, ancien), nouveaux in sorted(decors.items()):
         if len(nouveaux) == 1:
             lua.append(f"    {{ salle = 0x{piece}, ancien = {ancien}, nouveau = {next(iter(nouveaux))} }},")
+    lua += ["  },", "  examens = {"]
+    for piece, ancien, nouvel_id, qte in sortie["examens"]:
+        lua.append(f"    {{ examen = 0x{piece.upper()}, ancien = {ancien}, id = {nouvel_id}, qte = {qte} }},")
+    lua += ["  },", "  decalages = {"]
+    for piece, ancien in sorted({(r["piece"].upper(), r["ancien"]["id"]) for r in resultat
+                                 if r["ancien"]["id"] != r["nouveau"]["id"]}):
+        if (piece, ancien) in DECALAGES:
+            lua.append(f"    {{ decalage = 0x{piece}, ancien = {ancien}, y = {DECALAGES[(piece, ancien)]} }},")
     lua += ["  },", "}"]
     fichier_lua = sortie_dir / f"{nom}.lua"
     fichier_lua.write_text("\n".join(lua) + "\n", encoding="utf-8")
 
-    nom_objet = lambda ident: tr(f"objet_{ident}", langue)
-    # quantité affichée, sauf pour les armes bonus : munitions illimitées (le nom le dit déjà)
-    fois = lambda o: "" if o["id"] in IDS_ARMES_BONUS else f" x{o['quantite']}"
-    lignes = [tr("gen_resume", langue, graine=graine,
-                 armes=tr("gen_oui" if armes_aleatoires else "gen_non", langue)),
-              tr("gen_compte", langue, n=len(resultat), m=len(emplacements) - len(resultat),
-                 pistolet="" if armes_aleatoires else tr("gen_pistolet", langue)), ""]
-    for r in sorted(resultat, key=lambda x: x["piece"]):
-        a, n = r["ancien"], r["nouveau"]
-        lignes.append(f"[{r['piece'].upper():>3}] {r['nom_piece']}: "
-                      f"{nom_objet(a['id'])}{fois(a)}  ->  {nom_objet(n['id'])}{fois(n)}")
-    if ignores:
-        lignes += ["", tr("gen_non_utilises", langue)]
-        lignes += [f"  - [{f['piece'].upper()}] {f['description']}" for f, _ in ignores]
-    (sortie_dir / f"{nom}_spoiler.txt").write_text("\n".join(lignes), encoding="utf-8")
-    (dire_spoiler or dire)("\n".join(lignes))
-    dire(tr("gen_fichiers", langue, dossier=sortie_dir.resolve(), a=f"{nom}.json", b=f"{nom}.lua",
-            c=f"{nom}_spoiler.txt"))
+    texte = texte_spoiler(sortie, langue)
+    (sortie_dir / f"{nom}_spoiler.txt").write_text(texte, encoding="utf-8")
+    if dire_spoiler:
+        dire_spoiler(sortie)
+    else:
+        dire(texte)
+    dire(Msg("gen_fichiers", dossier=sortie_dir.resolve(), a=f"{nom}.json", b=f"{nom}.lua", c=f"{nom}_spoiler.txt"))
     if installer:
-        return installer_seed(fichier_lua, dossier_jeu, graine, armes_aleatoires, dire, langue)
+        return installer_seed(fichier_lua, dossier_jeu, graine, armes_aleatoires, dire, langue, messages_differes=True)
     return True
 
 
