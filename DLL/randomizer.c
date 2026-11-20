@@ -327,10 +327,24 @@ static int liste_contient(const DWORD *liste, int n, const char *nom)
 static char g_noms_examens[MAX_EXAMENS][8];
 
 /* Modèle iNNNp de l'objet « id » : écrit son nom dans « nom » et renvoie 1 si le fichier existe. */
+/* Table des objets du jeu (trouvée le 20/11/2026, bhd.exe+F5A50) : 0x85 entrées de 0x90 octets en bhd.exe+8C11D0,
+ * nom du modèle en +0x0C (« i104 »…). Certains objets n'ont pas de modèle à leur nom et prennent celui d'un autre :
+ * trousses 131 et 132 -> i104, disques MO 94 et 95 -> i093. Sans la table, on suppose « iNNN ». */
+#define ADR_TABLE_OBJETS (BASE_JEU + 0x8C11D0u)
+
+static void nom_modele(DWORD id, char *nom, int taille, const char *suffixe)
+{
+    const char *n = (const char *)(ADR_TABLE_OBJETS + id * 0x90u + 0x0C);
+    if (id < 0x85 && lisible(n, 8, 0) && n[0] == 'i' && n[1] >= '0' && n[1] <= '9' && n[4] == 0)
+        _snprintf(nom, taille, "%.4s%s", n, suffixe);
+    else
+        _snprintf(nom, taille, "i%03lu%s", (unsigned long)id, suffixe);
+}
+
 static int modele_existe(DWORD id, char *nom, int taille)
 {
     char chemin[MAX_PATH];
-    _snprintf(nom, taille, "i%03lup", (unsigned long)id);
+    nom_modele(id, nom, taille, "p");
     _snprintf(chemin, MAX_PATH, "%snativePC\\arc\\model\\item\\%s.arc", g_dossier, nom);
     return GetFileAttributesA(chemin) != INVALID_FILE_ATTRIBUTES;
 }
@@ -391,7 +405,7 @@ static void ajouter_modeles(void)
     }
     for (i = 0; g_visible && i < g_nb_decors; i++) {   /* décor : le modèle du nouvel objet doit exister */
         char nom[16], chemin[MAX_PATH];
-        _snprintf(nom, sizeof nom, "i%03lup", (unsigned long)g_decors[i].nouveau);
+        nom_modele(g_decors[i].nouveau, nom, sizeof nom, "p");
         _snprintf(chemin, MAX_PATH, "%snativePC\\arc\\model\\item\\%s.arc", g_dossier, nom);
         for (j = 0; j < g_nb; j++)                      /* et être chargé dans la pièce (objet de la seed) */
             if (g_seed[j].piece == g_decors[i].piece && g_seed[j].id == g_decors[i].nouveau && g_modele_ok[j]) break;
@@ -1488,7 +1502,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Resident Evil HD Remaster Randomizer v0.9.3 : demarrage");
+    journal("---- Resident Evil HD Remaster Randomizer v0.9.4.1 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
