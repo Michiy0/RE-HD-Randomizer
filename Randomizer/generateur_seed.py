@@ -47,7 +47,10 @@ from noms_objets import nom_officiel  # noqa: E402
 FICHIER_PAR_DEFAUT = "donnees_randomizer_RE1.xlsx"
 
 # Objets toujours mélangés sans risque
-IDS_LIBRES_DE_BASE = {4, 17, 18, 33, 34, 35, 68, 101, 112, 113}   # 18, 33, 35, 113 ajoutés le 18/11/2026
+IDS_LIBRES_DE_BASE = {4, 17, 18, 25, 33, 34, 35, 36, 68, 101, 104, 112, 113}   # 18, 33, 35, 113 ajoutés le 18/11/2026
+# 25 (munitions de Magnum), 36 (herbe bleue), 104 (trousse : 1 herbe verte) ajoutés le 20/11/2026, relevé terminé.
+# Pas encore 131 / 132 (trousses : verte + bleue, 2 vertes) : pas de fichier i131p / i132p, le jeu leur prête le
+# modèle d'une autre trousse via sa table d'objets ; la DLL ne sait pas encore la lire (objet invisible par terre).
 # 4 = pistolet d'autodéfense (une seule balle) : un objet comme le poignard, pas une arme de la liste (joueur, 19/11/2026)
 # Armes de base du jeu : mélangées seulement avec l'option --armes-aleatoires.
 # (clé du nom dans textes.py, id dans le jeu ou None s'il n'est pas encore relevé, personnage ou None = les deux)

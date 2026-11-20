@@ -43,12 +43,12 @@ or strategies.
 </tr>
 </table>
 
-## Status: version 0.9.3 (test)
+## Status: version 0.9.4 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty (whole game surveyed, laboratory included) | Jill, other difficulties |
-| 144 placed-item locations: ammo (handgun and shotgun), green and red herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
+| 161 placed-item locations: ammo (handgun, shotgun and magnum), green, red and blue herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
 | **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items and items obtained by examining something (trophy gems, fish hook…: already supported by the game DLL, name and preview included), with keys |
 | **Random weapons** option, with a choice of which weapons to shuffle (handgun, shotgun, assault shotgun) and a **guaranteed starting weapon** option | The other weapons (grenade launcher, flamethrower, magnums), random enemies |
 | **Fun** section: **bonus weapons** (unlimited Samurai Edge and rocket launcher, each replacing a random item) | — |
@@ -337,12 +337,12 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.9.3 (test)
+## État : version 0.9.4 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal (tout le jeu relevé, laboratoire compris) | Jill, autres difficultés |
-| 144 emplacements d'objets posés : munitions (pistolet et fusil), herbes vertes et rouges, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
+| 161 emplacements d'objets posés : munitions (pistolet, fusil et Magnum), herbes vertes, rouges et bleues, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
 | **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles et objets obtenus en examinant quelque chose (joyaux des trophées, hameçon… : déjà gérés par la DLL du jeu, nom et aperçu compris), avec les clés |
 | Option **armes aléatoires**, avec le choix des armes à mélanger (pistolet, fusil, fusil d'assaut) et option **arme garantie au départ** | Les autres armes (lance-grenades, lance-flammes, magnums), ennemis aléatoires |
 | Section **Fun** : **armes bonus** (Samurai Edge et lance-roquettes illimités, chacun à la place d'un objet au hasard) | — |
