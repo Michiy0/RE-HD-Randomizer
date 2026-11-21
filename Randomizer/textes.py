@@ -312,6 +312,20 @@ T = {
                     "Ningún arma marcada: las armas se quedan en su sitio.",
                     "Nenhuma arma marcada: as armas ficam no lugar.",
                     "Оружие не выбрано: оно останется на своих местах.", "未勾选任何武器：武器保持原位。"),
+    "malle_aleatoire": ("Malle de départ aléatoire", "Random starting item box", "スタート時のアイテムボックスをランダム化",
+                        "Baúl inicial aleatorio", "Baú inicial aleatório", "Случайный стартовый сундук",
+                        "随机初始道具箱"),
+    "note_malle_aleatoire": (
+        "Les objets de la malle au début de la partie sont mélangés avec les autres. Seulement pour une nouvelle partie.",
+        "The items in the item box at the start are shuffled with the others. New game only.",
+        "ゲーム開始時のアイテムボックスの中身を他のアイテムと混ぜます。ニューゲームのみ。",
+        "Los objetos del baúl al empezar se mezclan con los demás. Solo en partida nueva.",
+        "Os itens do baú no início são misturados com os outros. Só em um novo jogo.",
+        "Предметы в сундуке в начале игры перемешиваются с остальными. Только для новой игры.",
+        "开局时道具箱中的物品会与其他物品混合。仅限新游戏。"),
+    "malle_depart": ("Malle de départ", "Starting item box", "スタート時のアイテムボックス", "Baúl inicial",
+                     "Baú inicial", "Стартовый сундук", "初始道具箱"),
+    "malle_case": ("case {n}", "slot {n}", "{n}番目", "casilla {n}", "espaço {n}", "ячейка {n}", "第 {n} 格"),
     "objets_visibles": ("Objets visibles par terre", "Items visible on the ground", "床の上でも見える",
                         "Objetos visibles en el suelo", "Itens visíveis no chão", "Предметы видны на полу",
                         "地上可见物品"),
@@ -1278,6 +1292,14 @@ ALLEMAND_ITALIEN = {
     'objet_14': ('Raketenwerfer (unendliche Munition)',
                  'Lanciarazzi (munizioni illimitate)'),
 }
+ALLEMAND_ITALIEN.update({
+    "malle_aleatoire": ("Zufällige Kiste am Start", "Baule iniziale casuale"),
+    "note_malle_aleatoire": (
+        "Die Gegenstände in der Kiste zu Spielbeginn werden mit den anderen gemischt. Nur bei einem neuen Spiel.",
+        "Gli oggetti del baule all'inizio vengono mescolati con gli altri. Solo in una nuova partita."),
+    "malle_depart": ("Kiste am Start", "Baule iniziale"),
+    "malle_case": ("Platz {n}", "casella {n}"),
+})
 for _cle, _traductions in ALLEMAND_ITALIEN.items():
     T[_cle] = T[_cle] + _traductions
 

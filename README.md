@@ -43,13 +43,13 @@ or strategies.
 </tr>
 </table>
 
-## Status: version 0.9.4.3 (test)
+## Status: version 0.9.5 (test)
 
 | Supported | Coming |
 |---|---|
 | Chris, Normal difficulty (whole game surveyed, laboratory included) | Jill, other difficulties |
 | 164 placed-item locations: ammo (handgun, shotgun and magnum), green, red and blue herbs, ink ribbons, daggers, flash grenades, self-defense gun, first aid sprays and boxes | Keys and quest items (with logic that keeps the game completable) |
-| **Items visible on the ground**: the new item appears in the room and in the preview before pickup | Visible quest items and items obtained by examining something (trophy gems, fish hook…: already supported by the game DLL, name and preview included), with keys |
+| **Items visible on the ground**: the new item appears in the room and in the preview before pickup; **random starting item box** option | Visible quest items and items obtained by examining something (trophy gems, fish hook…: already supported by the game DLL, name and preview included), with keys |
 | **Random weapons** option, with a choice of which weapons to shuffle (handgun, shotgun, assault shotgun, magnum) and a **guaranteed starting weapon** option | The other weapons (grenade launcher, flamethrower), random enemies |
 | **Fun** section: **bonus weapons** (unlimited Samurai Edge and rocket launcher, each replacing a random item) | — |
 | Windows and **Steam Deck** (tested in game under Proton, SD card included); Linux | **[Archipelago](#archipelago-coming-soon)** support |
@@ -156,7 +156,7 @@ otherwise).
 - **Generate a seed** — unlocked once the DLL is in place:
   - *Playthrough*: character and difficulty;
   - *Options*: items visible on the ground (ticked by default; unticked, you see the original item until
-    pickup), random weapons (ticking it shows the weapon list; untick those that should stay in place) and
+    pickup), random starting item box (ticked by default; new game only), random weapons (ticking it shows the weapon list; untick those that should stay in place) and
     guaranteed starting weapon;
   - *Fun*: bonus weapons (choose the Samurai Edge, the rocket launcher or both);
   - **Generate seed**, with the seed (or “Random”) next to it — same seed + same options = same result: writes
@@ -337,13 +337,13 @@ même mélange : en partageant ce numéro, un ami peut jouer la même partie que
 </tr>
 </table>
 
-## État : version 0.9.4.3 (test)
+## État : version 0.9.5 (test)
 
 | Pris en charge | À venir |
 |---|---|
 | Chris, difficulté Normal (tout le jeu relevé, laboratoire compris) | Jill, autres difficultés |
 | 164 emplacements d'objets posés : munitions (pistolet, fusil et Magnum), herbes vertes, rouges et bleues, rubans encreurs, poignards, grenades aveuglantes, pistolet d'autodéfense, sprays et trousses de premiers secours | Clés et objets de quête (avec une logique qui garantit que la partie reste finissable) |
-| **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage | Objets de quête visibles et objets obtenus en examinant quelque chose (joyaux des trophées, hameçon… : déjà gérés par la DLL du jeu, nom et aperçu compris), avec les clés |
+| **Objets visibles par terre** : le nouvel objet s'affiche dans le décor et dans l'aperçu avant ramassage ; option **malle de départ aléatoire** | Objets de quête visibles et objets obtenus en examinant quelque chose (joyaux des trophées, hameçon… : déjà gérés par la DLL du jeu, nom et aperçu compris), avec les clés |
 | Option **armes aléatoires**, avec le choix des armes à mélanger (pistolet, fusil, fusil d'assaut, Magnum) et option **arme garantie au départ** | Les autres armes (lance-grenades, lance-flammes), ennemis aléatoires |
 | Section **Fun** : **armes bonus** (Samurai Edge et lance-roquettes illimités, chacun à la place d'un objet au hasard) | — |
 | Windows et **Steam Deck** (testé en jeu sous Proton, carte SD comprise) ; Linux | Support d'**[Archipelago](#archipelago-à-venir)** |
@@ -458,7 +458,7 @@ système, anglais sinon).
 - **Générer une seed** — débloqué une fois la DLL en place :
   - *Partie* : personnage et difficulté ;
   - *Options* : objets visibles par terre (cochée d'office ; décochée, on voit l'objet d'origine jusqu'au
-    ramassage), armes aléatoires (cocher la case affiche la liste des armes ; décoche celles qui doivent
+    ramassage), malle de départ aléatoire (cochée d'office ; nouvelle partie seulement), armes aléatoires (cocher la case affiche la liste des armes ; décoche celles qui doivent
     rester à leur place) et arme garantie au départ ;
   - *Fun* : armes bonus (au choix le Samurai Edge, le lance-roquettes ou les deux) ;
   - **Générer la seed**, avec la graine (ou « Au hasard ») juste à côté — même graine + mêmes options = même

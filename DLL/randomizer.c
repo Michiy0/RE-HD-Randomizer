@@ -71,6 +71,13 @@ static int    g_nb_examens;
 /* Objets posés dans un mécanisme (ex. la capsule de carburant dans la machine de la 50F) : leur point de
  * placement est caché dans le décor, seul le modèle d'origine dépasse. Le nouvel objet est remonté de « y »
  * (lignes « decalage = pièce, ancien = id d'origine, y = … » de la seed, v0.9.3+). */
+/* Malle de départ (v0.9.5) : au début d'une nouvelle partie, la case « malle » de la malle, qui contient l'objet
+ * « ancien », reçoit id / qte (lignes « malle = case, ancien = …, id = …, qte = … » de la seed). */
+#define MAX_MALLE 32
+typedef struct { DWORD caseno, ancien, id, qte; } CaseMalle;
+static CaseMalle g_malle[MAX_MALLE];
+static int       g_nb_malle;
+
 #define MAX_DECALAGES 64
 typedef struct { DWORD piece, ancien; float y; } Decalage;
 static Decalage g_decalages[MAX_DECALAGES];
@@ -144,7 +151,17 @@ static int charger_seed(const char *chemin)
     if (!f) return 0;
     g_nb = 0;
     while (fgets(ligne, sizeof ligne, f)) {
-        if (strstr(ligne, "decalage =")) {
+        if (strstr(ligne, "malle =")) {
+            DWORD v[5];
+            if (lire_nombres(ligne, v, 5) == 4 && g_nb_malle < MAX_MALLE && v[0] < 256) {
+                g_malle[g_nb_malle].caseno = v[0];
+                g_malle[g_nb_malle].ancien = v[1];
+                g_malle[g_nb_malle].id = v[2];
+                g_malle[g_nb_malle++].qte = v[3];
+            } else {
+                journal("Ligne de seed ignoree (format inattendu) : %.200s", ligne);
+            }
+        } else if (strstr(ligne, "decalage =")) {
             DWORD v[4];
             if (lire_nombres(ligne, v, 4) == 3 && g_nb_decalages < MAX_DECALAGES) {
                 g_decalages[g_nb_decalages].piece = v[0];
@@ -1131,6 +1148,152 @@ static void noter_partie(void)
 }
 
 /* Appelée régulièrement par le thread de surveillance (modes diagnostic et relevé). */
+/* ------------------------------------------------- donner un objet dans l'inventaire (recherche, 21/11/2026)
+ *
+ * Inventaire : structure de partie ([bhd.exe+8F2F28]) + 0x38, 10 cases de 8 octets (id, quantité) ; le jeu en utilise
+ * 6 avec Chris et 8 avec Jill ([partie+0x5110] == 1 : Jill). Le jeu remplit une case avec bhd.exe+EF2D0
+ * (__thiscall, ecx = partie ; case, id, quantité, drapeau « objet obtenu »), appelée par 42 endroits du jeu.
+ * TestDonner=id,quantité dans randomizer.ini : donne l'objet une fois, quelques secondes après l'arrivée dans une pièce. */
+#define ADR_POSER_CASE  (BASE_JEU + 0xEF2D0u)
+static const BYTE g_poser_case_attendu[9] = { 0x53, 0x56, 0x8B, 0xF1, 0x57, 0x80, 0x7E, 0x1C, 0x00 };
+typedef void (__attribute__((thiscall)) *PoserCase)(void *partie, DWORD numero, DWORD id, DWORD qte, DWORD obtenu);
+static DWORD g_test_donner_id, g_test_donner_qte;
+static int   g_test_donne;
+
+/* Renvoie le numéro de la case remplie, -1 si l'inventaire est plein ou si le code n'est pas celui attendu. */
+static int donner_objet(DWORD id, DWORD qte)
+{
+    DWORD partie, nb_cases, i;
+    if (!lisible((void *)ADR_POSER_CASE, sizeof g_poser_case_attendu, 0) ||
+        memcmp((void *)ADR_POSER_CASE, g_poser_case_attendu, sizeof g_poser_case_attendu) != 0) {
+        journal("Donner un objet : code inattendu en bhd.exe+EF2D0, rien n'est fait.");
+        return -1;
+    }
+    if (!lisible((void *)ADR_PTR_PARTIE, 4, 0)) return -1;
+    partie = *(DWORD *)ADR_PTR_PARTIE;
+    if (!partie || !lisible((void *)(partie + 0x38), 10 * 8, 1) || !lisible((void *)(partie + 0x5110), 4, 0)) return -1;
+    nb_cases = *(DWORD *)(partie + 0x5110) == 1 ? 8 : 6;
+    for (i = 0; i < nb_cases; i++) {
+        if (*(DWORD *)(partie + 0x38 + i * 8) == 0) {
+            ((PoserCase)ADR_POSER_CASE)((void *)partie, i, id, qte, 1);
+            journal("Objet donne dans l'inventaire : id %lu x%lu (case %lu sur %lu)", (unsigned long)id,
+                    (unsigned long)qte, (unsigned long)i + 1, (unsigned long)nb_cases);
+            return (int)i;
+        }
+    }
+    journal("Objet NON donne (inventaire plein) : id %lu x%lu", (unsigned long)id, (unsigned long)qte);
+    return -1;
+}
+
+/* TestMalle=1 (recherche de la malle, 21/11/2026) : au début d'une partie, copie la structure de partie
+ * ([bhd.exe+8F2F28], 0xE6000 octets, lecture seule) dans randomizer_partie.bin, pour y chercher hors du jeu le contenu
+ * connu de la malle de départ. Fichier personnel, jamais publié. */
+static int g_test_malle, g_malle_faite;
+
+static void copier_partie(void)
+{
+    static BYTE tampon[4096];
+    char chemin[MAX_PATH];
+    DWORD partie, a, ecrit, illisibles = 0, taille = 0xE6000;
+    HANDLE f;
+    if (!lisible((void *)ADR_PTR_PARTIE, 4, 0) || !(partie = *(DWORD *)ADR_PTR_PARTIE)) return;
+    _snprintf(chemin, MAX_PATH, "%srandomizer_partie.bin", g_dossier);
+    f = CreateFileA(chemin, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f == INVALID_HANDLE_VALUE) return;
+    for (a = 0; a < taille; a += sizeof tampon) {
+        if (!copier(partie + a, tampon, sizeof tampon)) { memset(tampon, 0, sizeof tampon); illisibles++; }
+        WriteFile(f, tampon, sizeof tampon, &ecrit, NULL);
+    }
+    CloseHandle(f);
+    journal("TestMalle : structure de partie (adresse %08lX) copiee dans randomizer_partie.bin (%lu page(s) illisible(s)).",
+            (unsigned long)partie, (unsigned long)illisibles);
+}
+
+/* Malle (trouvée le 21/11/2026) : partie + 0x88, 256 cases de 8 octets (id, quantité) ; la fonction de nouvelle
+ * partie (bhd.exe+EEB00 environ) y écrit le contenu de départ en prenant le verrou de la partie (+0x04) quand
+ * [partie+0x1C] ou [bhd.exe+95978C] est vrai, comme bhd.exe+EF2D0 pour l'inventaire.
+ * TestMalleDonner=id,quantité : met l'objet dans la première case vide de la malle (recherche). */
+#define NB_CASES_MALLE 256
+static DWORD g_test_malle_id, g_test_malle_qte;
+static int   g_test_malle_donne;
+
+static int donner_malle(DWORD id, DWORD qte)
+{
+    DWORD partie, i;
+    int verrou;
+    if (!lisible((void *)ADR_PTR_PARTIE, 4, 0) || !(partie = *(DWORD *)ADR_PTR_PARTIE)) return -1;
+    if (!lisible((void *)(partie + 0x88), NB_CASES_MALLE * 8, 1) || !lisible((void *)partie, 0x20, 0)) return -1;
+    verrou = *(BYTE *)(partie + 0x1C) || (lisible((void *)(BASE_JEU + 0x95978Cu), 1, 0) && *(BYTE *)(BASE_JEU + 0x95978Cu));
+    if (verrou) EnterCriticalSection((CRITICAL_SECTION *)(partie + 0x04));
+    for (i = 0; i < NB_CASES_MALLE; i++) {
+        DWORD *c = (DWORD *)(partie + 0x88 + i * 8);
+        if (c[0] == 0) {
+            c[1] = qte;
+            c[0] = id;
+            break;
+        }
+    }
+    if (verrou) LeaveCriticalSection((CRITICAL_SECTION *)(partie + 0x04));
+    if (i < NB_CASES_MALLE)
+        journal("Objet mis dans la malle : id %lu x%lu (case %lu sur %d)", (unsigned long)id, (unsigned long)qte,
+                (unsigned long)i + 1, NB_CASES_MALLE);
+    else
+        journal("Objet NON mis dans la malle (pleine) : id %lu x%lu", (unsigned long)id, (unsigned long)qte);
+    return i < NB_CASES_MALLE ? (int)i : -1;
+}
+
+/* Malle de départ : vérifiée à chaque arrivée dans une pièce (sauvegarde chargée puis nouvelle partie : test du
+ * 21/11/2026). Remplacée seulement si CHAQUE case prévue contient son objet d'origine et que la malle ne contient
+ * rien d'autre (nouvelle partie). Sinon (partie commencée, objets déplacés par le joueur) on ne touche à rien. Une
+ * fois remplacée, la malle ne correspond plus au contenu d'origine : jamais deux fois. */
+static void remplacer_malle_depart(void)
+{
+    DWORD partie, i, plus_haute = 0;
+    int k, verrou;
+    if (g_nb_malle == 0) return;
+    if (!lisible((void *)ADR_PTR_PARTIE, 4, 0) || !(partie = *(DWORD *)ADR_PTR_PARTIE)) return;
+    if (!lisible((void *)(partie + 0x88), NB_CASES_MALLE * 8, 1) || !lisible((void *)partie, 0x20, 0)) return;
+    for (k = 0; k < g_nb_malle; k++) {
+        const DWORD *c = (const DWORD *)(partie + 0x88 + g_malle[k].caseno * 8);
+        if (c[0] != g_malle[k].ancien) return;
+        if (g_malle[k].caseno > plus_haute) plus_haute = g_malle[k].caseno;
+    }
+    for (i = plus_haute + 1; i < NB_CASES_MALLE; i++)
+        if (*(DWORD *)(partie + 0x88 + i * 8) != 0) return;
+    verrou = *(BYTE *)(partie + 0x1C) || (lisible((void *)(BASE_JEU + 0x95978Cu), 1, 0) && *(BYTE *)(BASE_JEU + 0x95978Cu));
+    if (verrou) EnterCriticalSection((CRITICAL_SECTION *)(partie + 0x04));
+    for (k = 0; k < g_nb_malle; k++) {
+        DWORD *c = (DWORD *)(partie + 0x88 + g_malle[k].caseno * 8);
+        c[0] = g_malle[k].id;
+        c[1] = g_malle[k].qte;
+    }
+    if (verrou) LeaveCriticalSection((CRITICAL_SECTION *)(partie + 0x04));
+    for (k = 0; k < g_nb_malle; k++)
+        journal("Malle de depart : case %lu, id %lu -> id %lu x%lu", (unsigned long)g_malle[k].caseno + 1,
+                (unsigned long)g_malle[k].ancien, (unsigned long)g_malle[k].id, (unsigned long)g_malle[k].qte);
+}
+
+static void test_donner(void)
+{
+    /* L'écran-titre affiche une pièce (106) en arrière-plan : on attend un CHANGEMENT de pièce (début de partie ou
+     * chargement), sinon l'objet est donné à l'écran-titre puis effacé par la nouvelle partie (test du 21/11/2026). */
+    static DWORD piece_vue = 0xFFFFFFFF, premiere = 0xFFFFFFFF, depuis;
+    static int deja;
+    DWORD piece;
+    if ((g_test_donne || !g_test_donner_id) && (g_malle_faite || !g_test_malle) &&
+        (g_test_malle_donne || !g_test_malle_id) && !g_nb_malle) return;
+    if (!piece_actuelle(&piece) || piece == 0) return;
+    if (premiere == 0xFFFFFFFF) premiere = piece;
+    if (piece == premiere && piece_vue == 0xFFFFFFFF) return;
+    if (piece != piece_vue) { piece_vue = piece; depuis = GetTickCount(); deja = 0; return; }
+    if (GetTickCount() - depuis < 4000 || deja) return;  /* pièce stable depuis 4 s : le joueur a la main */
+    deja = 1;                                            /* une fois par arrivée dans une pièce */
+    if (g_test_malle && !g_malle_faite) { g_malle_faite = 1; copier_partie(); }
+    remplacer_malle_depart();                            /* avant tout ajout dans la malle */
+    if (g_test_donner_id && !g_test_donne) { g_test_donne = 1; donner_objet(g_test_donner_id, g_test_donner_qte); }
+    if (g_test_malle_id && !g_test_malle_donne) { g_test_malle_donne = 1; donner_malle(g_test_malle_id, g_test_malle_qte); }
+}
+
 static void diagnostic_periodique(void)
 {
     static DWORD derniere_piece = 0xFFFFFFFF, piece_stable, depuis;
@@ -1485,6 +1648,7 @@ static DWORD WINAPI surveillance(LPVOID inutile)
         if (InterlockedExchange(&g_veille_changee, 0)) parcourir_threads(2);   /* pièges déplacés */
         else if (tour % 4 == 0) parcourir_threads(1);   /* arme les threads créés depuis le dernier passage */
         if (g_diagnostic || g_releve) diagnostic_periodique();
+        if ((g_test_donner_id || g_test_malle || g_test_malle_id || g_nb_malle) && !g_coupe) test_donner();
         if (g_visible && !g_coupe) mettre_a_jour_evenements();
         Sleep(250);
     }
@@ -1502,7 +1666,7 @@ static void demarrer(void)
     _snprintf(g_journal, MAX_PATH, "%srandomizer_journal.txt", g_dossier);
     _snprintf(ini, MAX_PATH, "%srandomizer.ini", g_dossier);
 
-    journal("---- Resident Evil HD Remaster Randomizer v0.9.4.1 : demarrage");
+    journal("---- Resident Evil HD Remaster Randomizer v0.9.5 : demarrage");
     {
         /* Les adresses ne valent que pour une version précise de bhd.exe : sur une autre version,
          * on ne pose rien (le jeu tourne normalement, XInput reste transmis). */
@@ -1533,6 +1697,30 @@ static void demarrer(void)
     }
     g_pieges = g_diagnostic && GetPrivateProfileIntA("Randomizer", "Pieges", 0, ini);
     g_releve = GetPrivateProfileIntA("Randomizer", "Releve", 0, ini);
+    g_test_malle = GetPrivateProfileIntA("Randomizer", "TestMalle", 0, ini);
+    if (g_test_malle) journal("TestMalle : la structure de partie sera copiee au debut de la partie.");
+    {   /* TestMalleDonner=id,quantité (recherche : mettre un objet dans la malle) */
+        char texte[64];
+        DWORD v[3];
+        GetPrivateProfileStringA("Randomizer", "TestMalleDonner", "", texte, sizeof texte, ini);
+        if (lire_nombres(texte, v, 3) == 2 && v[0] > 0 && v[0] < 0x85) {
+            g_test_malle_id = v[0];
+            g_test_malle_qte = v[1];
+            journal("TestMalleDonner : l'objet id %lu x%lu sera mis dans la malle au debut de la partie.",
+                    (unsigned long)v[0], (unsigned long)v[1]);
+        }
+    }
+    {   /* TestDonner=id,quantité (recherche : donner un objet dans l'inventaire) */
+        char texte[64];
+        DWORD v[3];
+        GetPrivateProfileStringA("Randomizer", "TestDonner", "", texte, sizeof texte, ini);
+        if (lire_nombres(texte, v, 3) == 2 && v[0] > 0 && v[0] < 0x85) {
+            g_test_donner_id = v[0];
+            g_test_donner_qte = v[1];
+            journal("TestDonner : l'objet id %lu x%lu sera donne 4 s apres l'arrivee dans une piece.",
+                    (unsigned long)v[0], (unsigned long)v[1]);
+        }
+    }
     if (g_releve)
         journal("Mode releve actif : les objets de chaque nouvelle piece sont notes ici (lignes Releve auto).");
 
@@ -1541,10 +1729,11 @@ static void demarrer(void)
                 g_diagnostic || g_releve ? " (releve ou diagnostic seul)" : "");
         if (!g_diagnostic && !g_releve) return;
     } else {
-        journal("Seed %ld chargee : %d emplacements, %d objet(s) examine(s), armes aleatoires : %s. Fichier : %s",
-                g_graine, g_nb, g_nb_examens, g_armes == 1 ? "OUI" : g_armes == 0 ? "non" : "inconnu", chemin_seed);
+        journal("Seed %ld chargee : %d emplacements, %d objet(s) examine(s), %d case(s) de malle, armes aleatoires : %s. "
+                "Fichier : %s", g_graine, g_nb, g_nb_examens, g_nb_malle,
+                g_armes == 1 ? "OUI" : g_armes == 0 ? "non" : "inconnu", chemin_seed);
     }
-    if (g_nb == 0 && g_nb_examens == 0 && !g_diagnostic && !g_releve) return;
+    if (g_nb == 0 && g_nb_examens == 0 && g_nb_malle == 0 && !g_diagnostic && !g_releve) return;
     /* Objets examinés : relevé (pour connaître leurs ids), diagnostic, ou seed qui en remplace. Examens=0 dans
      * randomizer.ini désactive ce point d'arrêt. */
     g_examens_voulus = GetPrivateProfileIntA("Randomizer", "Examens", 1, ini)

@@ -129,6 +129,27 @@ def lire_emplacements(chemin, personnage="Chris", difficulte="Normal"):
     return emplacements, ignores
 
 
+# Malle de départ (option « Malle de départ aléatoire », 21/11/2026) : ses objets deviennent des emplacements comme
+# les autres. Pièce « malle », empreinte = numéro de case. La DLL (v0.9.5+) remplace la malle au début d'une nouvelle
+# partie (lignes « malle = case, ancien, id, qte »), seulement si elle contient encore exactement son contenu d'origine.
+PIECE_MALLE = "malle"
+
+
+def lire_malle(chemin, personnage="Chris", difficulte="Normal"):
+    """Contenu de départ de la malle (onglet « Coffre de départ »), dans l'ordre des cases."""
+    wb = load_workbook(chemin, data_only=True)
+    if "Coffre de départ" not in wb.sheetnames:
+        return []
+    cases = []
+    for perso, diff, ident, _, qte, *_ in wb["Coffre de départ"].iter_rows(min_row=2, values_only=True):
+        if ident is None or (str(perso or ""), str(diff or "")) != (personnage, difficulte):
+            continue
+        n = len(cases)
+        cases.append({"piece": PIECE_MALLE, "case": n, "nom_piece": "", "description": f"Malle de départ, case {n + 1}",
+                      "id": int(ident), "quantite": int(qte or 0), "chemin": "malle", "empreinte": [f"case{n}"]})
+    return cases
+
+
 def generer(emplacements, graine, ids_libres):
     rng = random.Random(graine)
     libres = [e for e in emplacements if e["id"] in ids_libres]
@@ -144,6 +165,8 @@ def generer(emplacements, graine, ids_libres):
             "description": e["description"],
             "nom_piece": e["nom_piece"],
         })
+        if "case" in e:
+            resultat[-1]["case"] = e["case"]
     return resultat
 
 
@@ -211,11 +234,15 @@ def resume_spoiler(sortie, langue="fr"):
 def lignes_spoiler(sortie, langue="fr"):
     """Lignes du tableau du spoiler, triées par pièce :
     (pièce, nom de la pièce, objet d'origine, nouvel objet, arme bonus ?)."""
-    return [(r["piece"].upper(), r.get("nom_piece") or "",
+    def lieu(r):
+        if r["piece"] == PIECE_MALLE:
+            return tr("malle_depart", langue), tr("malle_case", langue, n=r.get("case", 0) + 1)
+        return r["piece"].upper(), r.get("nom_piece") or ""
+    return [(*lieu(r),
              nom_objet(r["ancien"]["id"], langue) + _fois(r["ancien"]),
              nom_objet(r["nouveau"]["id"], langue) + _fois(r["nouveau"]),
              r["nouveau"]["id"] in IDS_ARMES_BONUS)
-            for r in sorted(sortie["remplacements"], key=lambda x: x["piece"])]
+            for r in sorted(sortie["remplacements"], key=lambda x: (x["piece"], x.get("case", 0)))]
 
 
 def texte_spoiler(sortie, langue="fr"):
@@ -324,7 +351,7 @@ def tirer_graine():
 def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=False, dossier_jeu=None,
              dire=print, personnage="Chris", difficulte="Normal", langue="fr", dire_spoiler=None,
              armes_choisies=None, objets_visibles=True, arme_depart=False, armes_bonus=False,
-             messages_differes=False):
+             messages_differes=False, malle_aleatoire=False):
     """Génère une seed et écrit ses fichiers. Partagé par la ligne de commande et l'application.
     Renvoie True si tout s'est bien passé. langue : langue des messages et du spoiler (textes.py).
     dire_spoiler : si donné, reçoit le contenu de la seed (dictionnaire du fichier .json, à afficher avec
@@ -333,7 +360,8 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     armes_choisies : ids des armes à mélanger avec armes_aleatoires (None = toutes celles connues).
     objets_visibles : la DLL remplace aussi les objets posés (modèle par terre et aperçu) avant ramassage.
     arme_depart : avec armes_aleatoires, une arme est toujours placée au pistolet du hall (106).
-    armes_bonus : ids des armes bonus à placer (option « Fun ») ; True = toutes, False / None / vide = aucune."""
+    armes_bonus : ids des armes bonus à placer (option « Fun ») ; True = toutes, False / None / vide = aucune.
+    malle_aleatoire : les objets de la malle de départ sont mélangés avec les autres (nouvelle partie seulement)."""
     dire_brut = dire
     if not messages_differes:
         dire = lambda m: dire_brut(rendre(m, langue))   # noqa: E731
@@ -354,6 +382,8 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     if not emplacements:
         dire(Msg("gen_aucun", personnage=personnage, difficulte=Msg(f"diff_{difficulte}")))
         return False
+    if malle_aleatoire:
+        emplacements = emplacements + lire_malle(fichier, personnage, difficulte)
     resultat = generer(emplacements, graine, ids_libres)
     if arme_depart and armes_aleatoires:
         garantir_arme_depart(resultat, graine, ids_armes)
@@ -367,7 +397,8 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
         "personnage": personnage, "difficulte": difficulte,
         "graine": graine, "options": {"armes_aleatoires": armes_aleatoires, "objets_visibles": bool(objets_visibles),
                                       "arme_depart": bool(arme_depart and armes_aleatoires),
-                                      "armes_bonus": sorted(armes_bonus)},
+                                      "armes_bonus": sorted(armes_bonus),
+                                      "malle_aleatoire": bool(malle_aleatoire)},
         "remplacements": resultat,
         "laisses": len(emplacements) - len(resultat),
         "non_utilises": [[f["piece"].upper(), f["description"]] for f, _ in ignores],
@@ -382,7 +413,9 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
            "return {", f"  graine = {graine},",
            f"  armes_aleatoires = {'true' if armes_aleatoires else 'false'},",
            f"  objets_visibles = {'true' if objets_visibles else 'false'},", "  remplacements = {"]
-    for r in resultat:
+    posees = [r for r in resultat if r["piece"] != PIECE_MALLE]
+    malle = sorted((r for r in resultat if r["piece"] == PIECE_MALLE), key=lambda r: r["case"])
+    for r in posees:
         emp = ", ".join("0x" + v.upper() for v in r["empreinte"])
         lua.append(f"    {{ piece = 0x{r['piece'].upper()}, empreinte = {{ {emp} }}, "
                    f"id = {r['nouveau']['id']}, qte = {r['nouveau']['quantite']} }},")
@@ -392,7 +425,7 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     # « piece ») : les DLL plus anciennes ignorent ces lignes. Une pièce où le même objet d'origine devient deux
     # objets différents est laissée de côté (on ne saurait pas quel modèle remplacer).
     decors = {}
-    for r in resultat:
+    for r in posees:
         cle = (r["piece"].upper(), r["ancien"]["id"])
         if r["ancien"]["id"] != r["nouveau"]["id"]:
             decors.setdefault(cle, set()).add(r["nouveau"]["id"])
@@ -404,10 +437,15 @@ def produire(graine, armes_aleatoires, fichier, dossier_sortie=".", installer=Fa
     for piece, ancien, nouvel_id, qte in sortie["examens"]:
         lua.append(f"    {{ examen = 0x{piece.upper()}, ancien = {ancien}, id = {nouvel_id}, qte = {qte} }},")
     lua += ["  },", "  decalages = {"]
-    for piece, ancien in sorted({(r["piece"].upper(), r["ancien"]["id"]) for r in resultat
+    for piece, ancien in sorted({(r["piece"].upper(), r["ancien"]["id"]) for r in posees
                                  if r["ancien"]["id"] != r["nouveau"]["id"]}):
         if (piece, ancien) in DECALAGES:
             lua.append(f"    {{ decalage = 0x{piece}, ancien = {ancien}, y = {DECALAGES[(piece, ancien)]} }},")
+    # Malle de départ : toutes les cases (même inchangées), la DLL vérifie le contenu d'origine case par case.
+    lua += ["  },", "  coffre = {"]
+    for r in malle:
+        lua.append(f"    {{ malle = {r['case']}, ancien = {r['ancien']['id']}, id = {r['nouveau']['id']}, "
+                   f"qte = {r['nouveau']['quantite']} }},")
     lua += ["  },", "}"]
     fichier_lua = sortie_dir / f"{nom}.lua"
     fichier_lua.write_text("\n".join(lua) + "\n", encoding="utf-8")
