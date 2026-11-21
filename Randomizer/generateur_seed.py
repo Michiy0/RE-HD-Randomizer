@@ -154,19 +154,18 @@ PIECE_DEPART, ID_DEPART = "106", 3
 def garantir_arme_depart(resultat, graine, ids_armes):
     """Option « arme garantie au départ » : l'emplacement du pistolet du hall reçoit une arme (choisie au hasard,
     selon la graine, parmi les armes mélangées). On échange simplement deux objets du résultat : la seed contient
-    toujours exactement les mêmes objets. Le pistolet d'autodéfense (une seule balle) n'est choisi que s'il est la
-    seule arme, et le revolver Magnum (trop fort dès le hall) seulement s'il n'y a rien d'autre. Renvoie l'id de
-    l'arme placée au départ, ou None si rien à faire."""
+    toujours exactement les mêmes objets. Toutes les armes cochées ont la même chance, Magnum compris (choix du
+    joueur, 21/11/2026). Le pistolet d'autodéfense n'en fait pas partie : c'est un objet (IDS_LIBRES_DE_BASE).
+    Renvoie l'id de l'arme placée au départ, ou None si rien à faire."""
     depart = next((r for r in resultat if r["piece"].lower() == PIECE_DEPART and r["ancien"]["id"] == ID_DEPART), None)
     if depart is None:
         return None                                  # pistolet non mélangé : il reste au hall, déjà une arme
     armes = [r for r in resultat if r["nouveau"]["id"] in ids_armes]
-    fortes = [r for r in armes if r["nouveau"]["id"] not in (4, 11)]
-    if depart["nouveau"]["id"] in ids_armes and (depart["nouveau"]["id"] not in (4, 11) or not fortes):
+    if depart["nouveau"]["id"] in ids_armes:
         return depart["nouveau"]["id"]
     if not armes:
         return None
-    choix = random.Random(graine ^ 0x5EED).choice(sorted(fortes or armes, key=lambda r: (r["piece"], r["nouveau"]["id"])))
+    choix = random.Random(graine ^ 0x5EED).choice(sorted(armes, key=lambda r: (r["piece"], r["nouveau"]["id"])))
     depart["nouveau"], choix["nouveau"] = choix["nouveau"], depart["nouveau"]
     return depart["nouveau"]["id"]
 
