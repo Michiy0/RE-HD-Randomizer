@@ -60,8 +60,13 @@ ARMES = [
     ("arme_fusil_assaut", 13, None),        # réservoir de l'Aqua Ring (412), x10 : sans risque (joueur, 19/11/2026)
     ("arme_lance_grenades", None, "Jill"),
     ("arme_lance_flammes", None, "Chris"),
-    ("arme_lance_roquettes", None, None),   # celui de la fin du jeu (une seule roquette), pas le bonus illimité
-    ("arme_magnums", None, None),
+    # Magnum : une seule case pour les deux personnages. Chris a le revolver Magnum (11, en 312, x6 : ajouté le
+    # 21/11/2026), Jill le .44 Magnum de Barry (15, à relever). Test du joueur (21/11/2026) : Chris peut équiper le
+    # Magnum de Barry, identique à son revolver ; le mélange ne crée pas d'objet, il n'y a donc qu'un Magnum par partie.
+    # Le lance-grenades, lui, ne s'équipe PAS avec Chris (même test) : il reste « Jill uniquement ».
+    # Pas de lance-roquettes de fin de jeu (id 10, héliport 303) : test du 21/11/2026, donné tôt il ne blesse que le
+    # Tyran final ; et sans lui à l'héliport la fin devient impossible. Il ne doit jamais être déplacé.
+    ("arme_magnum", 11, None),
 ]
 IDS_ARMES = {i for _, i, _ in ARMES if i is not None}
 # Armes bonus (option « Fun ») : ids confirmés par une seed de test le 19/11/2026 (munitions illimitées gérées par
@@ -150,13 +155,14 @@ def garantir_arme_depart(resultat, graine, ids_armes):
     """Option « arme garantie au départ » : l'emplacement du pistolet du hall reçoit une arme (choisie au hasard,
     selon la graine, parmi les armes mélangées). On échange simplement deux objets du résultat : la seed contient
     toujours exactement les mêmes objets. Le pistolet d'autodéfense (une seule balle) n'est choisi que s'il est la
-    seule arme. Renvoie l'id de l'arme placée au départ, ou None si rien à faire."""
+    seule arme, et le revolver Magnum (trop fort dès le hall) seulement s'il n'y a rien d'autre. Renvoie l'id de
+    l'arme placée au départ, ou None si rien à faire."""
     depart = next((r for r in resultat if r["piece"].lower() == PIECE_DEPART and r["ancien"]["id"] == ID_DEPART), None)
     if depart is None:
         return None                                  # pistolet non mélangé : il reste au hall, déjà une arme
     armes = [r for r in resultat if r["nouveau"]["id"] in ids_armes]
-    fortes = [r for r in armes if r["nouveau"]["id"] != 4]
-    if depart["nouveau"]["id"] in ids_armes and (depart["nouveau"]["id"] != 4 or not fortes):
+    fortes = [r for r in armes if r["nouveau"]["id"] not in (4, 11)]
+    if depart["nouveau"]["id"] in ids_armes and (depart["nouveau"]["id"] not in (4, 11) or not fortes):
         return depart["nouveau"]["id"]
     if not armes:
         return None

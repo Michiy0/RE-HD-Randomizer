@@ -26,7 +26,7 @@ import mise_a_jour
 import progression
 import textes
 
-VERSION = "0.9.4.1"
+VERSION = "0.9.4.2"
 TAILLE_BHD_EXE = 9640360
 URL_DEPOT = "https://github.com/Michiy0/Resident-Evil-HD-Remaster-Randomizer"
 # Crédits (onglet Info) : (pseudo, nom complet, profil GitHub)
@@ -940,13 +940,10 @@ class Application(tk.Tk):
         self.liste_armes = ttk.Frame(o, style="Carte.TFrame", borderwidth=0)
         self.cases_armes = {}
         for cle, id_arme, perso in gen.ARMES:
-            texte = self.t(cle)
-            if perso:
-                texte += f"  · {self.t('chris_uniquement' if perso == 'Chris' else 'jill_uniquement')}"
+            texte = self.t(cle)            # armes d'un seul personnage : cachées pour l'autre (afficher_liste_armes)
             if id_arme is None:
                 texte += a_venir
             case = ttk.Checkbutton(self.liste_armes, text=texte, variable=self.armes_cochees[cle])
-            case.pack(anchor="w")
             self.cases_armes[cle] = (case, id_arme, perso)
         # « Arme garantie au départ » : juste sous les armes aléatoires (grisée sans elles)
         self.case_arme_depart = ttk.Checkbutton(o, text=self.t("arme_depart"), variable=self.arme_depart)
@@ -1181,14 +1178,18 @@ class Application(tk.Tk):
 
     def afficher_liste_armes(self):
         """Liste des armes sous « Armes aléatoires » (seulement quand la case est cochée).
-        Une arme dont l'id n'est pas encore connu, ou réservée à l'autre personnage, reste grisée."""
+        Une arme dont l'id n'est pas encore connu reste grisée ; celle de l'autre personnage est cachée."""
         if self.armes.get():
             self.liste_armes.pack(anchor="w", padx=(27, 0), pady=(4, 0), after=self.note_armes)
         else:
             self.liste_armes.pack_forget()
+        # seulement les armes du personnage choisi (lance-grenades : Jill, lance-flammes : Chris ; tests en jeu du
+        # 21/11/2026 : l'autre personnage ne peut pas s'en servir), dans l'ordre de gen.ARMES
         for case, id_arme, perso in self.cases_armes.values():
-            dispo = id_arme is not None and perso in (None, self.personnage.get())
-            case.state(["!disabled"] if dispo else ["disabled"])
+            case.pack_forget()
+            if perso in (None, self.personnage.get()):
+                case.pack(anchor="w")
+                case.state(["!disabled"] if id_arme is not None else ["disabled"])
         if hasattr(self, "case_arme_depart"):
             self.case_arme_depart.state(["!disabled"] if self.armes.get() else ["disabled"])
 
